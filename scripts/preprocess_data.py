@@ -40,9 +40,6 @@ for id in only_ids[0]:
             original_path = all_image_paths[k]
             original_image = Image.open(original_path)
             original_width, original_height = original_image.size
-            
-            # Ensure the output directory exists
-            os.makedirs(os.path.dirname(new_images_path), exist_ok=True)
             original_image.save(os.path.join(new_images_path, original_name))
 
     # Process non-original images
