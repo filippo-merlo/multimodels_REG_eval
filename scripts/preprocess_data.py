@@ -25,7 +25,7 @@ for folder_name in os.listdir(image_dir_path):
                 # Append full path to the final list
                 all_image_paths.append(os.path.join(folder_path, image_name))
 
-pprint(all_image_paths)
+pprint(len(all_image_paths))
 #%%
 def load_data():
     # Load and preprocess data
