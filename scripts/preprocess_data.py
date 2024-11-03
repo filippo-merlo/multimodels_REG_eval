@@ -57,7 +57,7 @@ for id in only_ids[0]:
             height_ratio = original_height / height
 
             # Resize the image to match original dimensions
-            resized_image = image.resize((original_width, original_height), Image.LANCZOSS)
+            resized_image = image.resize((original_width, original_height), Image.LANCZOS)
 
             # Get bbox
             x,w,y,h = dataset[id]['target_bbox'] 
