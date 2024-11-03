@@ -60,7 +60,7 @@ for id in only_ids[0]:
             resized_image = image.resize((original_width, original_height), Image.LANCZOS)
 
             # Get bbox
-            x,w,y,h = dataset[id]['target_bbox'] 
+            x,w,y,h = dataset[not_original_name]['target_bbox'] 
             new_box = [int(x*width_ratio), int(w*width_ratio), int(y*height_ratio), int(h*height_ratio)]
             dataset[not_original_name]['target_bbox'] = new_box
 
