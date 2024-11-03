@@ -7,10 +7,9 @@ from pprint import pprint
 with open(dataset_path, 'r') as f:
     dataset = json.load(f)
 
-
 extensions = ['.jpg']
 
-all_image_paths = []
+all_image_paths = {}
 
 # Loop through each folder in the root image directory
 for folder_name in os.listdir(image_dir_path):
@@ -23,9 +22,10 @@ for folder_name in os.listdir(image_dir_path):
             # Check if file extension matches
             if any(image_name.lower().endswith(ext) for ext in extensions):
                 # Append full path to the final list
-                all_image_paths.append(os.path.join(folder_path, image_name))
+                all_image_paths[image_name] = os.path.join(folder_path, image_name)
 
-pprint(len(all_image_paths))
+pprint(all_image_paths)
+
 #%%
 def load_data():
     # Load and preprocess data
