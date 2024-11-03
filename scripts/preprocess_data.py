@@ -31,7 +31,7 @@ for folder_name in os.listdir(images_path):
 only_ids = list(set(only_ids))
 
 # Iterate through all ids
-for id in only_ids:
+for id in only_ids[0]:
 
     # Get original image details
     for k in all_image_paths.keys():
