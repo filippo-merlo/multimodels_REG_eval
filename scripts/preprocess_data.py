@@ -62,7 +62,7 @@ for id in only_ids[0]:
             # Get bbox
             x,w,y,h = dataset[id]['target_bbox'] 
             new_box = [int(x*width_ratio), int(w*width_ratio), int(y*height_ratio), int(h*height_ratio)]
-            dataset[id]['target_bbox'] = new_box
+            dataset[not_original_name]['target_bbox'] = new_box
 
             # Save or process the resized image as needed
             resized_image.save(os.path.join(new_images_path,not_original_name))
