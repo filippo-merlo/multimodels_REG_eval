@@ -6,4 +6,5 @@ data_dir_path = '/mnt/cimec-storage6/users/filippo.merlo/sceneREG_data'
 dataset_path = os.path.join(data_dir_path, 'final_dataset.json')
 
 # Path of the folder with the images
-image_dir_path = os.path.join(data_dir_path, 'generated_images')
+images_path = os.path.join(data_dir_path, 'generated_images')
+new_images_path = os.path.join(data_dir_path, 'resized_images')
