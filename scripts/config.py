@@ -1,6 +1,6 @@
 import os 
 
-data_dir_path = '/Users/filippomerlo/Desktop/actual_project_data'
+data_dir_path = '/mnt/cimec-storage6/users/filippo.merlo/sceneREG_data'
 
 # Path of the dictionary with the data 
 dataset_path = os.path.join(data_dir_path, 'final_dataset.json')
