@@ -7,7 +7,8 @@ from pprint import pprint
 with open(dataset_path, 'r') as f:
     dataset = json.load(f)
 
-print(dataset[dataset.keys()[0]])
+print(dataset[list(dataset.keys())[0]])
+
 extensions = ['.jpg']
 
 all_image_paths = {}
