@@ -25,7 +25,7 @@ def add_gaussian_noise_in_bbox(image_path, bbox, noise_level=0.0):
     
     # Box notation [x, y, w, h]
     x, y, w, h = map(int, bbox)
-    
+
     # Ensure the bounding box is within the image dimensions
     x_end = min(x + w, image_np.shape[1])
     y_end = min(y + h, image_np.shape[0])
@@ -59,5 +59,5 @@ for image_name, image_path in images.items():
     if i > 100:
         break
     bbox = dataset[image_name]['target_bbox']
-    noisy_image = add_gaussian_noise_in_bbox(image_path, bbox, noise_level=0.5)
+    noisy_image = add_gaussian_noise_in_bbox(image_path, bbox, noise_level=1)
     noisy_image.save(os.path.join(data_dir_path, f'noisy_images/{image_name}'))
