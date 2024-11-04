@@ -24,7 +24,8 @@ def add_gaussian_noise_in_bbox(image_path, bbox, noise_level=0.0):
     image_np = np.array(image)
     
     # Box notation [x, y, w, h]
-    x, y, w, h = bbox
+    x, y, w, h = map(int, bbox)
+    
     # Ensure the bounding box is within the image dimensions
     x_end = min(x + w, image_np.shape[1])
     y_end = min(y + h, image_np.shape[0])
