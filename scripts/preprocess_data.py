@@ -32,9 +32,12 @@ def save_with_box(image_path, bbox, save_path):
 
 dataset = load_dataset()
 images = get_images()
-for image_name, image_path in images.items()[100]:
+i = 0
+for image_name, image_path in images.items():
+    if 1 > 100:
+        break
     save_with_box(image_path, dataset[image_name]['target_bbox'], os.path.join(save_path, image_name))
-
+    i += 1
 
 
 
