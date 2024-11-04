@@ -49,6 +49,6 @@ def add_gaussian_noise_in_bbox(image_path, bbox, noise_level=0.0):
     image = Image.open(image_path)
     image_np = np.array(image)
     # box notation [x,w,h,y]
-    x, w, h, y = bbox
+    x, y, w, h = bbox
 
     return image

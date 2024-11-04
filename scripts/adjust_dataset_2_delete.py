@@ -66,7 +66,7 @@ for id in tqdm(only_ids):
             if 'clean' in image_name:
                 dataset[image_name] = dataset[original_name]
             else:
-                x, w, y, h = dataset[image_name]['target_bbox']
+                x, y, w, h = dataset[image_name]['target_bbox']
                 new_box = [
                     int(x * width_ratio), int(w * width_ratio),
                     int(y * height_ratio), int(h * height_ratio)
