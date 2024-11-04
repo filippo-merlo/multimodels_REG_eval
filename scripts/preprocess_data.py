@@ -2,7 +2,7 @@ import os
 import json
 from tqdm import tqdm
 from PIL import Image
-from config import dataset_path, images_path, new_images_path
+from config import dataset_path, images_path, new_images_path, data_dir_path
 
 # Load dataset
 with open(dataset_path, 'r') as f:
@@ -77,7 +77,7 @@ for id in tqdm(only_ids):
             resized_image.save(os.path.join(new_images_path, image_name))
 
 # Save the updated dataset
-with open(os.path.join(dataset_path, 'final_dataset_resized.json'), 'w') as f:
+with open(os.path.join(data_dir_path, 'final_dataset_resized.json'), 'w') as f:
     json.dump(dataset, f)
 
 #%%
