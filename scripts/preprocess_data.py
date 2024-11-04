@@ -23,6 +23,7 @@ def save_with_box(image_path, bbox, save_path):
     image = cv2.imread(image_path)
     
     # draw box
+    print(bbox)
     x, w, y, h = bbox
     cv2.rectangle(image, (x, y), (x + w, y + h), (255, 0, 0), 2)
     
