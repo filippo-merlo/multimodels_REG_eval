@@ -25,7 +25,7 @@ def save_with_box(image_path, bbox, save_path):
     # draw box
     print(bbox)
     x, w, y, h = bbox
-    cv2.rectangle(image, (x, y), (x + w, y + h), (255, 0, 0), 2)
+    cv2.rectangle(image, (int(x), int(y)), (int(x + w), int(y + h)), (255, 0, 0), 2)
     
     # save image
     cv2.imwrite(save_path, image)
