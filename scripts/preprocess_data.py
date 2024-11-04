@@ -1,79 +1,81 @@
-# preprocess_data.py
-from config import *
-import json
 import os
+import json
 from PIL import Image
-from pprint import pprint
+from config import dataset_path, images_path, new_images_path
 
+# Load dataset
 with open(dataset_path, 'r') as f:
     dataset = json.load(f)
 
-print(dataset[list(dataset.keys())[0]])
-'''
-{'scene': 'fastfood_restaurant', 'target': 'knife', 'swapped_object': 'strap', 'target_bbox': [818, 120, 123, 248], 'rel_level': 'low', 'rel_score': -0.042248012344412514, 'excluded': False}
-'''
-
+# Supported image file extensions
 extensions = ['.jpg']
 
+# Prepare dictionaries to store image paths and IDs
 all_image_paths = {}
-only_ids = []
-# Loop through each folder in the root image directory
+only_ids = set()
+
+# Collect image paths and IDs
 for folder_name in os.listdir(images_path):
     folder_path = os.path.join(images_path, folder_name)
-
-    # Check if the folder path is actually a directory
     if os.path.isdir(folder_path):
-        # Loop through each file in the folder
         for image_name in os.listdir(folder_path):
-            # Check if file extension matches
             if any(image_name.lower().endswith(ext) for ext in extensions):
-                # Append full path to the final list
-                only_ids.append(image_name.split('_')[0])
+                image_id = image_name.split('_')[0]
+                only_ids.add(image_id)
                 all_image_paths[image_name] = os.path.join(folder_path, image_name)
 
-only_ids = list(set(only_ids))
+only_ids = list(only_ids)
 
-# Iterate through all ids
-for id in only_ids[0]:
+# Ensure the output directory exists
+os.makedirs(new_images_path, exist_ok=True)
 
-    # Get original image details
-    for k in all_image_paths.keys():
-        if id in k and 'original' in k:
-            original_name = k
-            original_path = all_image_paths[k]
-            original_image = Image.open(original_path)
-            original_width, original_height = original_image.size
-            original_image.save(os.path.join(new_images_path, original_name))
+# Process each ID in `only_ids`
+for id in only_ids:
+
+    # Initialize details for the original image
+    original_image_path = None
+    original_bbox = None
+    original_size = None
+
+    # Identify the original image and its properties
+    for image_name, image_path in all_image_paths.items():
+        if id in image_name and 'original' in image_name:
+            original_image_path = image_path
+            original_name = image_name
+            original_image = Image.open(original_image_path)
+            original_size = original_image.size
+            original_image.save(os.path.join(new_images_path, original_name))  # Save original
             original_bbox = dataset[original_name]['target_bbox']
+            break
+
+    if not original_image_path or not original_size:
+        continue  # Skip if no original image is found for the ID
+
+    original_width, original_height = original_size
 
     # Process non-original images
-    for k in all_image_paths.keys():
-        if id in k and 'original' not in k:
-            not_original_name = k
-            not_original_path = all_image_paths[k]
-            
-            # Open the non-original image
-            image = Image.open(not_original_path)
+    for image_name, image_path in all_image_paths.items():
+        if id in image_name and 'original' not in image_name:
+            image = Image.open(image_path)
             width, height = image.size
-            
-            # Calculate resizing ratios
-            width_ratio = original_width / width
-            height_ratio = original_height / height
+            width_ratio, height_ratio = original_width / width, original_height / height
 
-            # Resize the image to match original dimensions
             resized_image = image.resize((original_width, original_height), Image.LANCZOS)
-
-            # Get bbox
-            if 'clean' in not_original_name:
-                dataset[not_original_name] = dataset[original_name]
+            
+            if 'clean' in image_name:
+                dataset[image_name] = dataset[original_name]
             else:
-                x,w,y,h = dataset[not_original_name]['target_bbox'] 
-                new_box = [int(x*width_ratio), int(w*width_ratio), int(y*height_ratio), int(h*height_ratio)]
-                dataset[not_original_name]['target_bbox'] = new_box
+                x, w, y, h = dataset[image_name]['target_bbox']
+                new_box = [
+                    int(x * width_ratio), int(w * width_ratio),
+                    int(y * height_ratio), int(h * height_ratio)
+                ]
+                dataset[image_name]['target_bbox'] = new_box
 
-            # Save or process the resized image as needed
-            resized_image.save(os.path.join(new_images_path,not_original_name))
+            # Save resized image
+            resized_image.save(os.path.join(new_images_path, image_name))
 
+# Save the updated dataset
 with open(os.path.join(dataset_path, 'final_dataset_resized.json'), 'w') as f:
     json.dump(dataset, f)
 
