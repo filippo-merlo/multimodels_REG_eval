@@ -34,7 +34,7 @@ def add_gaussian_noise_in_bbox(image_path, bbox, noise_level=0.0):
     roi = image_np[y:y_end, x:x_end]
     
     # Generate Gaussian noise
-    noise = np.random.normal(loc=0, scale=noise_level, size=roi.shape)
+    noise = np.random.normal(loc=0, scale=255*noise_level, size=roi.shape)
     
     # Add noise to the region of interest
     noisy_roi = roi + noise
@@ -59,5 +59,5 @@ for image_name, image_path in images.items():
     if i > 100:
         break
     bbox = dataset[image_name]['target_bbox']
-    noisy_image = add_gaussian_noise_in_bbox(image_path, bbox, noise_level=100.0)
+    noisy_image = add_gaussian_noise_in_bbox(image_path, bbox, noise_level=0.5)
     noisy_image.save(os.path.join(data_dir_path, f'noisy_images/{image_name}'))
