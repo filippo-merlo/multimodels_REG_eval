@@ -54,7 +54,7 @@ dataset = load_dataset()
 images = get_images_names_path()
 
 i = 0
-os.makedirs(os.path.dirname(os.path.join(data_dir_path,'noisy_images')))
+os.makedirs(os.path.dirname(os.path.join(data_dir_path,'noisy_images')), exist_ok=True)
 for image_name, image_path in images.items():
     i += 1
     if i > 100:
