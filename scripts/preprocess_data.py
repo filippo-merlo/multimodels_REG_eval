@@ -24,7 +24,7 @@ def save_with_box(image_path, bbox, save_path):
     
     # draw box
     print(bbox)
-    x, w, y, h = bbox
+    x, y, w, h = bbox
     cv2.rectangle(image, (int(x), int(y)), (int(x + w), int(y + h)), (255, 0, 0), 2)
     
     # save image
@@ -32,7 +32,7 @@ def save_with_box(image_path, bbox, save_path):
 
 dataset = load_dataset()
 images = get_images()
-for image_name, image_path in images.items():
+for image_name, image_path in images.items()[100]:
     save_with_box(image_path, dataset[image_name]['target_bbox'], os.path.join(save_path, image_name))
 
 
