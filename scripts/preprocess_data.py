@@ -57,6 +57,6 @@ for image_name, image_path in images.items():
     i += 1
     if i > 100:
         break
-    bbox = dataset[image_name]['bbox']
+    bbox = dataset[image_name]['target_bbox']
     noisy_image = add_gaussian_noise_in_bbox(image_path, bbox, noise_level=0.5)
     noisy_image.save(os.path.join(data_dir_path, f'noisy_images/{image_name}'))
