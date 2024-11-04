@@ -41,6 +41,7 @@ for id in only_ids[0]:
             original_image = Image.open(original_path)
             original_width, original_height = original_image.size
             original_image.save(os.path.join(new_images_path, original_name))
+            original_bbox = dataset[original_name]['target_bbox']
 
     # Process non-original images
     for k in all_image_paths.keys():
