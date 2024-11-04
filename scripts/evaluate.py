@@ -2,7 +2,7 @@
 import torch
 import json
 from models import load_model  # Assuming a load_model function is defined to load your model
-from scripts.preprocess_data import load_data
+from scripts.adjust_dataset_2_delete import load_data
 from scripts.utils import log_metrics
 
 def evaluate(model_name, data, device):
