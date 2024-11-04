@@ -34,7 +34,7 @@ dataset = load_dataset()
 images = get_images()
 i = 0
 for image_name, image_path in images.items():
-    if 1 > 100:
+    if i > 100:
         break
     save_with_box(image_path, dataset[image_name]['target_bbox'], os.path.join(save_path, image_name))
     i += 1
