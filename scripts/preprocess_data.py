@@ -1,5 +1,6 @@
 import os
 import json
+from tqdm import tqdm
 from PIL import Image
 from config import dataset_path, images_path, new_images_path
 
@@ -30,7 +31,7 @@ only_ids = list(only_ids)
 os.makedirs(new_images_path, exist_ok=True)
 
 # Process each ID in `only_ids`
-for id in only_ids:
+for id in tqdm(only_ids):
 
     # Initialize details for the original image
     original_image_path = None
