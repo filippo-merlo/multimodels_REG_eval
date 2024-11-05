@@ -10,19 +10,43 @@ def evaluate(model_name, data, images_n_p, device):
     model = load_model(model_name, device)
     
     # Run evaluation
-    noise_levels = [0, 0.5, 1]
+    noise_levels = [0.0, 0.5, 1.0]
     results = {
-        '0': [],
-        '0.5': [],
-        '1': []
+        '0.0_target': [],
+        '0.0_output': [],
+        '0.5_target': [],
+        '0.5_output': [],
+        '1.0_target': [],
+        '1.0_output': []
     }
+
     for noise_level in noise_levels:
         for image_name, image_path in images_n_p.items():
-            
+            # Exclude images that has been filtered out by the LLAVA filter
+            if data[image_name]['excluded']:
+                continue
             bbox = data[image_name]['target_bbox']
-            input = get_input(model, image, target, bbox)
+            
+            if 'original' in image_name:
+                target = data[image_name]['target']
+            if 'clean' in image_name:
+                target = 'nothing'
+            else:
+                target = data[image_name]['swapped_object']
+            
+            # get the image with the corresponding noise level im the roi 
+            image = add_gaussian_noise_in_bbox(image_path, bbox, noise_level)
+
+            # get the input for the model that is 
+            # prompt with the right notation for indicating the target area
+            # the image 
+            # eventually the bounding box if the model accepts it
+            input = get_input(model_name, image, bbox)
+
             output = model(input)
-            results[str(noise_level)] = results[str(noise_level)].append(output)
+
+            results[str(noise_level)+'_output'] = results[str(noise_level)+'_output'].append(output)
+            results[str(noise_level)+'_target'] = results[str(noise_level)+'_target'].append(target)
 
     # Calculate metrics
     metrics = calculate_metrics(results, data)
@@ -33,7 +57,7 @@ def evaluate(model_name, data, images_n_p, device):
 
 def calculate_metrics(results, data):
     # Placeholder for metric calculation logic
-    return {"accuracy": sum([1 for r, d in zip(results, data) if r == d]) / len(data)}
+    return 
 
 if __name__ == "__main__":
     import argparse
