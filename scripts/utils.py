@@ -43,3 +43,8 @@ def add_gaussian_noise_in_bbox(image_path, bbox, noise_level=0.0):
     noisy_image = Image.fromarray(image_np)
     
     return noisy_image
+
+
+def get_input(model_name, image, bbox):
+    # Placeholder for input preparation logic
+    return

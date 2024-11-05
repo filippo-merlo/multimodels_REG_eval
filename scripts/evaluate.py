@@ -1,13 +1,14 @@
 # evaluate.py
 import torch
 import json
-from models import load_model  # Assuming a load_model function is defined to load your model
+from scripts.models_scripts import load_model  # Assuming a load_model function is defined to load your model
 from scripts.data import load_dataset, get_images_names_path
 from scripts.utils import log_metrics, add_gaussian_noise_in_bbox
+from scripts.config import *
 
 def evaluate(model_name, data, images_n_p, device):
     # Load the model
-    model = load_model(model_name, device)
+    model, get_input = load_model(model_name, device, model_dir, cache_dir)
     
     # Run evaluation
     noise_levels = [0.0, 0.5, 1.0]

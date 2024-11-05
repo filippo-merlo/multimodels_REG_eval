@@ -16,14 +16,6 @@ def get_images_names_path():
     return images_n_p
 
 
-dataset = load_dataset()
-i = 0
-for k, v in dataset.items():
-    if i > 10:
-        break
-    i += 1
-    print(k, dataset[k].keys())
-
 # 000000562242_kitchen_chair_clean.jpg dict_keys(['fixations', 'captions_train2017_annotations', 'instances_train2017_annotations', 'scene', 'target', 'swapped_object', 'target_bbox', 'rel_level', 'rel_score', 'excluded'])
 # 000000505876_fastfood_restaurant_knife_strap_relscore_low.jpg dict_keys(['scene', 'target', 'swapped_object', 'target_bbox', 'rel_level', 'rel_score', 'excluded'])
 # 000000480082_fastfood_restaurant_fork_original.jpg dict_keys(['fixations', 'captions_train2017_annotations', 'instances_train2017_annotations', 'scene', 'target', 'swapped_object', 'target_bbox', 'rel_level', 'rel_score', 'excluded'])
