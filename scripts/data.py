@@ -18,7 +18,7 @@ def get_images_names_path():
 
 dataset = load_dataset()
 for k, v in dataset.items():
-    print(dataset[k].keys())
+    print(k, dataset[k].keys())
 '''
 images = get_images_names_path()
 
