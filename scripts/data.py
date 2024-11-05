@@ -19,7 +19,7 @@ def get_images_names_path():
 dataset = load_dataset()
 i = 0 
 for k, v in dataset.items():
-    if i > 10:
+    if i > 100:
         break
     print(k, v)
     i += 1
