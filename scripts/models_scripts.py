@@ -15,7 +15,7 @@ def load_model(model_name, device, model_dir, cache_dir):
     from transformers import AutoModelForVision2Seq, AutoTokenizer, AutoImageProcessor, StoppingCriteria
 
     # BLIP-3
-    if model_name == 'Salesforce/xgen-mm-phi3-mini-instruct-singleimg-r-v1.5':
+    if model_name == 'Salesforce/xgen-mm-phi3-mini-instruct-interleave-r-v1.5':
         
         model = AutoModelForVision2Seq.from_pretrained(model_name, trust_remote_code=True, cache_dir=model_dir)
         tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True, use_fast=False, legacy=False, cache_dir=cache_dir)
@@ -36,7 +36,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             }
 
             x, y, w, h = map(int, bbox)
-            
+
             x1 = x
             y1 = y
             x2 = x + w
