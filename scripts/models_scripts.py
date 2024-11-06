@@ -19,7 +19,7 @@ def load_model(model_name, device, model_dir, cache_dir):
         
         model = model.to(device)
         model.eval()
-        
+
         tokenizer = model.update_special_tokens(tokenizer)
         tokenizer.padding_side = "left"
         tokenizer.eos_token = '<|end|>'
@@ -59,7 +59,7 @@ def load_model(model_name, device, model_dir, cache_dir):
 
     elif model_name == '':
         # other models
-        return model, generate
+        return 
     else:
         # other models
-        return model, generate
+        return 
