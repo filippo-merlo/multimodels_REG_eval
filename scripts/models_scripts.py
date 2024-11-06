@@ -35,7 +35,12 @@ def load_model(model_name, device, model_dir, cache_dir):
                 "pixel_values": [pixel_values]
             }
 
-            x1, y1, x2, y2 = map(int, bbox)
+            x, y, w, h = map(int, bbox)
+            
+            x1 = x
+            y1 = y
+            x2 = x + w
+            y2 = y + h
 
             prompt = (
                 '<|system|>\nA chat between a curious user and an artificial intelligence assistant. '
