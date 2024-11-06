@@ -67,6 +67,8 @@ if __name__ == "__main__":
     parser.add_argument("model_name", type=str, help="The name of the model to evaluate")
     parser.add_argument("device", type=str, help="The device to run evaluation on, e.g., 'cuda:0'")
     args = parser.parse_args()
+
+    # python evaluate.py --model_name 'Salesforce/xgen-mm-phi3-mini-instruct-singleimg-r-v1.5' --device 'cuda'
     
     # Load data
     data = load_dataset()
