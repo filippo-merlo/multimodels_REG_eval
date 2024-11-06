@@ -51,7 +51,8 @@ def evaluate(model_name, data, images_n_p, device):
 
 
     # Calculate metrics
-    metrics = calculate_metrics(results, data)
+    #metrics = calculate_metrics(results, data)
+    metrics = None
     
     # Log results
     #log_metrics(model_name, metrics)
