@@ -51,7 +51,7 @@ def load_model(model_name, device, model_dir, cache_dir):
                 if isinstance(value, torch.Tensor):
                     inputs[name] = value.cuda()
 
-            generated_text = model.generate(**inputs, image_size=image_sizes,  
+            generated_text = model.generate(**inputs, image_size=[image_sizes],  
                                             pad_token_id=tokenizer.pad_token_id,
                                             eos_token_id=tokenizer.eos_token_id,
                                             temperature=0.05,
