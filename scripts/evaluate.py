@@ -46,8 +46,8 @@ def evaluate(model_name, data, images_n_p, device):
             output = generate(model, image, bbox)
             print('output:', output)
 
-            results[str(noise_level)+'_target'] = results[str(noise_level)+'_target'].append(target)
-            results[str(noise_level)+'_output'] = results[str(noise_level)+'_output'].append(output)
+            results[str(noise_level)+'_target'].append(target)
+            results[str(noise_level)+'_output'].append(output)
 
 
     # Calculate metrics
