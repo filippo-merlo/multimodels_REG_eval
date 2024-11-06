@@ -1,10 +1,10 @@
 # evaluate.py
 import torch
 import json
-from scripts.models_scripts import load_model  # Assuming a load_model function is defined to load your model
-from scripts.data import load_dataset, get_images_names_path
-from scripts.utils import log_metrics, add_gaussian_noise_in_bbox
-from scripts.config import *
+from models_scripts import load_model  # Assuming a load_model function is defined to load your model
+from data import load_dataset, get_images_names_path
+from utils import log_metrics, add_gaussian_noise_in_bbox
+from config import *
 
 def evaluate(model_name, data, images_n_p, device):
     # Load the model
@@ -74,7 +74,6 @@ if __name__ == "__main__":
     data = load_dataset()
     images_n_p = get_images_names_path()
 
-    
     # Evaluate
     metrics = evaluate(args.model_name, data, images_n_p, args.device)
     '''
