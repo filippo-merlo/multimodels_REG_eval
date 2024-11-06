@@ -31,6 +31,7 @@ def load_model(model_name, device, model_dir, cache_dir):
         def generate(model, image, bbox):
             pixel_values = image_processor([image], image_aspect_ratio='anyres')["pixel_values"].cuda()
             image_sizes = [image.size]
+            print(image_sizes)
             inputs = {
                 "pixel_values": pixel_values
             }
