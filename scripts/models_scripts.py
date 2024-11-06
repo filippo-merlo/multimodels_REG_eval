@@ -2,6 +2,7 @@ import torch
 # prompt base: What is the object in this part of the image <bbox>?
 
 def load_model(model_name, device, model_dir, cache_dir):
+    '''
     hf_or_manual = model_name[0]
     model_name = model_name[1]
 
@@ -9,9 +10,9 @@ def load_model(model_name, device, model_dir, cache_dir):
         from transformers import AutoModelForVision2Seq, AutoTokenizer, AutoImageProcessor, StoppingCriteria
     else: 
         pass
-    
+    '''
+
     from transformers import AutoModelForVision2Seq, AutoTokenizer, AutoImageProcessor, StoppingCriteria
-    model_name = model_name
 
     # BLIP-3
     if model_name == 'Salesforce/xgen-mm-phi3-mini-instruct-singleimg-r-v1.5':
