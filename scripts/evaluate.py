@@ -73,6 +73,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # python evaluate.py --model_name Salesforce/xgen-mm-phi3-mini-instruct-interleave-r-v1.5 --device cuda
+    # python evaluate.py --model_name Salesforce/xgen-mm-phi3-mini-instruct-r-v1 --device cuda
     
     # Load data
     data = load_dataset()
