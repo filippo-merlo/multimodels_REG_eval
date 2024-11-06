@@ -30,8 +30,7 @@ def load_model(model_name, device, model_dir, cache_dir):
         
         def generate(model, image, bbox):
             pixel_values = image_processor([image], image_aspect_ratio='anyres')["pixel_values"].cuda()
-            image_sizes = [image.size]
-            print(image_sizes)
+
             inputs = {
                 "pixel_values": pixel_values
             }
@@ -52,7 +51,7 @@ def load_model(model_name, device, model_dir, cache_dir):
                 if isinstance(value, torch.Tensor):
                     inputs[name] = value.cuda()
 
-            generated_text = model.generate(**inputs, image_size=[image_sizes],  
+            generated_text = model.generate(**inputs, image_size=[image.size],  
                                             pad_token_id=tokenizer.pad_token_id,
                                             eos_token_id=tokenizer.eos_token_id,
                                             temperature=0.05,
