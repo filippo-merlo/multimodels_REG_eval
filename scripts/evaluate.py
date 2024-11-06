@@ -8,7 +8,7 @@ from scripts.config import *
 
 def evaluate(model_name, data, images_n_p, device):
     # Load the model
-    model, get_input = load_model(model_name, device, model_dir, cache_dir)
+    model, generate = load_model(model_name, device, model_dir, cache_dir)
     
     # Run evaluation
     noise_levels = [0.0, 0.5, 1.0]
@@ -38,22 +38,23 @@ def evaluate(model_name, data, images_n_p, device):
             # get the image with the corresponding noise level im the roi 
             image = add_gaussian_noise_in_bbox(image_path, bbox, noise_level)
 
-            # get the input for the model that is 
+            # get the input for the model that is
             # prompt with the right notation for indicating the target area
-            # the image 
+            # the image
             # eventually the bounding box if the model accepts it
-            input = get_input(model_name, image, bbox)
+            
+            output = generate(model, image, bbox)
+            print('output:', output)
 
-            output = model(input)
-
-            results[str(noise_level)+'_output'] = results[str(noise_level)+'_output'].append(output)
             results[str(noise_level)+'_target'] = results[str(noise_level)+'_target'].append(target)
+            results[str(noise_level)+'_output'] = results[str(noise_level)+'_output'].append(output)
+
 
     # Calculate metrics
     metrics = calculate_metrics(results, data)
     
     # Log results
-    log_metrics(model_name, metrics)
+    #log_metrics(model_name, metrics)
     return metrics
 
 def calculate_metrics(results, data):
@@ -71,9 +72,11 @@ if __name__ == "__main__":
     data = load_dataset()
     images_n_p = get_images_names_path()
 
+    
     # Evaluate
     metrics = evaluate(args.model_name, data, images_n_p, args.device)
-    
+    '''
     # Save results
     with open(f'outputs/results/{args.model_name}_metrics.json', 'w') as f:
         json.dump(metrics, f)
+    '''
