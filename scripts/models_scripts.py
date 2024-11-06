@@ -32,7 +32,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             pixel_values = image_processor([image], image_aspect_ratio='anyres')["pixel_values"].cuda()
 
             inputs = {
-                "pixel_values": pixel_values
+                "pixel_values": [pixel_values]
             }
 
             x1, y1, x2, y2 = map(int, bbox)
