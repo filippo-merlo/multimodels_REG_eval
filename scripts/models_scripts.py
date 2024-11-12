@@ -70,14 +70,6 @@ def load_model(model_name, device, model_dir, cache_dir):
         # Update special tokens for the tokenizer
         tokenizer = model.update_special_tokens(tokenizer)
         
-        def apply_prompt_template(prompt):
-            s = (
-                '<|system|>\nA chat between a curious user and an artificial intelligence assistant. '
-                "The assistant gives helpful, detailed, and polite answers to the user's questions.<|end|>\n"
-                f'<|user|>\n<image>\n{prompt}<|end|>\n<|assistant|>\n'
-            )
-            return s
-        
         class EosListStoppingCriteria(StoppingCriteria):
             def __init__(self, eos_sequence=[32007]):
                 self.eos_sequence = eos_sequence
@@ -86,15 +78,31 @@ def load_model(model_name, device, model_dir, cache_dir):
                 last_ids = input_ids[:, -len(self.eos_sequence):].tolist()
                 return self.eos_sequence in last_ids  
 
-        def generate(model, image, prompt):
+        def generate(model, image, bbox):
             # Preprocess the image
             inputs = image_processor([image], return_tensors="pt", image_aspect_ratio='anyres')
 
-            # Apply the prompt template
-            prompt_with_template = apply_prompt_template(prompt)
+            pixel_values = image_processor([image], image_aspect_ratio='anyres')["pixel_values"].cuda()
+
+            inputs = {
+                "pixel_values": [pixel_values]
+            }
+
+            x, y, w, h = map(int, bbox)
+
+            x1 = x
+            y1 = y
+            x2 = x + w
+            y2 = y + h
+
+            prompt = (
+                '<|system|>\nA chat between a curious user and an artificial intelligence assistant. '
+                "The assistant gives helpful, detailed, and polite answers to the user's questions.<|end|>\n"
+                f'<|user|>\nWhat is the object in this part of the image <bbox>{x1}, {y1}, {x2}, {y2}</bbox><|end|>\n<|assistant|>\n'
+            )
 
             # Tokenize the prompt and prepare inputs
-            language_inputs = tokenizer([prompt_with_template], return_tensors="pt")
+            language_inputs = tokenizer([prompt], return_tensors="pt")
             inputs.update(language_inputs)
 
             # Move tensors to the device (GPU or CPU)
