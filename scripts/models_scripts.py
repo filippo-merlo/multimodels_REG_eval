@@ -111,7 +111,7 @@ def load_model(model_name, device, model_dir, cache_dir):
                     inputs[name] = value.to(device)
 
             # Generate text with the model
-            generated_text = model.generate(**inputs, image_size=[[1024,1024]],
+            generated_text = model.generate(**inputs, image_size=[1024],
                                             pad_token_id=tokenizer.pad_token_id,
                                             do_sample=False, max_new_tokens=768, top_p=None, num_beams=1,
                                             stopping_criteria=[EosListStoppingCriteria()])
