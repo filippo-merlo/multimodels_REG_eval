@@ -1,4 +1,6 @@
 import torch
+from PIL import Image
+
 # prompt base: What is the object in this part of the image <bbox>?
 
  # Normalize box diamentions
@@ -15,7 +17,6 @@ def convert_box(bbox):
     return [x, y, x+w, y+h]
 
 def load_model(model_name, device, model_dir, cache_dir):
-
 
     # BLIP-3
     if model_name == 'Salesforce/xgen-mm-phi3-mini-instruct-singleimg-r-v1.5':
@@ -173,8 +174,48 @@ def load_model(model_name, device, model_dir, cache_dir):
         return model, generate
 
 
-    elif model_name == '':
-        # other models
+    elif model_name == 'allenai/Molmo-7B-O-0924':
+        from transformers import AutoModelForCausalLM, AutoProcessor, GenerationConfig
+        # Load the processor and model
+        processor = AutoProcessor.from_pretrained(
+            model_name,
+            trust_remote_code=True,
+            torch_dtype='auto',
+            device_map='auto'
+        )
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            trust_remote_code=True,
+            torch_dtype='auto',
+            device_map='auto'
+        )
+        model = model.to(device)
+        model.eval()
+
+        def generate(model, image, bbox):
+            # Process image from URL and text prompt
+            
+            inputs = processor.process(
+                images=[image],
+                text=prompt_text
+            )
+
+            # Move inputs to the correct device and create a batch of size 1
+            inputs = {k: v.to(model.device).unsqueeze(0) for k, v in inputs.items()}
+
+            # Generate output with configured generation settings
+            output = model.generate_from_batch(
+                inputs,
+                GenerationConfig(max_new_tokens=200, stop_strings=["<|endoftext|>"]),
+                tokenizer=processor.tokenizer
+            )
+
+            # Decode generated tokens to text
+            generated_tokens = output[0, inputs['input_ids'].size(1):]
+            generated_text = processor.tokenizer.decode(generated_tokens, skip_special_tokens=True)
+
+            return generated_text
+
         return model, generate
     else:
         # other models
