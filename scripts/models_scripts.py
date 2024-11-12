@@ -1,6 +1,19 @@
 import torch
 # prompt base: What is the object in this part of the image <bbox>?
 
+ # Normalize box diamentions
+def normalize_box(bbox, image_width=1025, image_height=1025):
+    return (
+        round(float(bbox[0] / image_width), 4),
+        round(float(bbox[1] / image_height), 4),
+        round(float(bbox[2] / image_width), 4),
+        round(float(bbox[3] / image_height), 4),
+    )
+
+def convert_box(bbox):
+    x, y, w, h = tuple(bbox) # Box coordinates are in (left, top, width, height) format
+    return [x, y, x+w, y+h]
+
 def load_model(model_name, device, model_dir, cache_dir):
 
 
@@ -25,12 +38,7 @@ def load_model(model_name, device, model_dir, cache_dir):
                 "pixel_values": [pixel_values]
             }
 
-            x, y, w, h = map(int, bbox)
-
-            x1 = x
-            y1 = y
-            x2 = x + w
-            y2 = y + h
+            x1, y1 ,x2, y2 = convert_box(map(int, bbox))
 
             prompt = (
                 '<|system|>\nA chat between a curious user and an artificial intelligence assistant. '
@@ -51,6 +59,7 @@ def load_model(model_name, device, model_dir, cache_dir):
                                             eos_token_id=tokenizer.eos_token_id,
                                             temperature=0.05,
                                             do_sample=False, max_new_tokens=1024, top_p=None, num_beams=1)
+            
             prediction = tokenizer.decode(generated_text[0], skip_special_tokens=True).split("<|end|>")[0]
             return prediction
 
@@ -83,17 +92,17 @@ def load_model(model_name, device, model_dir, cache_dir):
             inputs = image_processor([image], return_tensors="pt", image_aspect_ratio='anyres')
 
             pixel_values = image_processor([image], image_aspect_ratio='anyres')["pixel_values"].cuda()
+            pixel_values = inputs["pixel_values"].squeeze(0).cuda()  # Remove unnecessary batch dimension
+    
+            inputs = {
+                "pixel_values": pixel_values.unsqueeze(0)  # Re-add batch dimension if needed for model input
+            }
 
             inputs = {
                 "pixel_values": [pixel_values]
             }
 
-            x, y, w, h = map(int, bbox)
-
-            x1 = x
-            y1 = y
-            x2 = x + w
-            y2 = y + h
+            x1, y1 ,x2, y2 = convert_box(map(int, bbox))
 
             prompt = (
                 '<|system|>\nA chat between a curious user and an artificial intelligence assistant. '
@@ -133,19 +142,6 @@ def load_model(model_name, device, model_dir, cache_dir):
 
         def generate(model, image, bbox):
             # Adapt box
-            # Normalize box diamentions
-            def normalize_box(bbox, image_width=1025, image_height=1025):
-                return (
-                    round(float(bbox[0] / image_width), 4),
-                    round(float(bbox[1] / image_height), 4),
-                    round(float(bbox[2] / image_width), 4),
-                    round(float(bbox[3] / image_height), 4),
-                )
-
-            def convert_box(bbox):
-                x, y, w, h = tuple(bbox) # Box coordinates are in (left, top, width, height) format
-                return [x, y, x+w, y+h]
-            
             W = image.size[0]
             H = image.size[1]
             normalized_bbox = normalize_box(convert_box(bbox), W, H)
