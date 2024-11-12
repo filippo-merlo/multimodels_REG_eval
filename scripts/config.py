@@ -13,5 +13,7 @@ cache_dir = '/mnt/cimec-storage6/users/filippo.merlo/cache_regScene_eval'
 
 # model list 
 model_list = [
-    ('hf', 'Salesforce/xgen-mm-phi3-mini-instruct-singleimg-r-v1.5')
+    'Salesforce/xgen-mm-phi3-mini-instruct-singleimg-r-v1.5',
+    'Salesforce/xgen-mm-phi3-mini-instruct-r-v1',
+    'microsoft/kosmos-2-patch14-224',
 ]
