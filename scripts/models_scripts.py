@@ -111,6 +111,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             # Decode and return the generated text
             prediction = tokenizer.decode(generated_text[0], skip_special_tokens=True).split("<|end|>")[0]
             return prediction
+        
         return model, generate 
 
     elif model_name == 'microsoft/kosmos-2-patch14-224':
@@ -161,9 +162,9 @@ def load_model(model_name, device, model_dir, cache_dir):
 
             # Decode generated output and process text
             generated_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-            processed_text, entities = processor.post_process_generation(generated_text, cleanup_and_extract=False)
+            processed_text = processor.post_process_generation(generated_text, cleanup_and_extract=False)
             
-            return processed_text, entities
+            return processed_text
         
         return model, generate
 
