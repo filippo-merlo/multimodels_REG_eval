@@ -13,19 +13,21 @@ def log_metrics(model_name, metrics):
 from PIL import Image, ImageOps
 import numpy as np
 
-def add_grey_background_and_rescale_bbox(image, bbox):
+def add_grey_background_and_rescale_bbox(image_path, bbox):
     """
     Adds a grey square background to the input image, centers the image on it,
     and rescales the bounding box to correspond to the new image dimensions.
 
     Args:
-        image (PIL.Image.Image): The input image.
+        image_path (ster): Path to input image.
         bbox (tuple): A tuple describing the bounding box in the format (x, y, w, h).
 
     Returns:
         PIL.Image.Image: The new image with a grey background.
         tuple: The rescaled bounding box in the format (x, y, w, h).
     """
+    image = Image.open(image_path)
+
     # Unpack the bounding box
     x, y, w, h = bbox
     
@@ -48,10 +50,9 @@ def add_grey_background_and_rescale_bbox(image, bbox):
     
     return grey_background, new_bbox
 
-def add_gaussian_noise_in_bbox(image_path, bbox, noise_level=0.0):
+def add_gaussian_noise_in_bbox(image, bbox, noise_level=0.0):
 
     # Add noise to the image within the bounding box
-    image = Image.open(image_path)
 
     image, bbox = add_grey_background_and_rescale_bbox(image, bbox)
 

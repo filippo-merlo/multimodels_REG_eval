@@ -3,7 +3,7 @@ import torch
 import json
 from models_scripts import load_model  # Assuming a load_model function is defined to load your model
 from data import load_dataset, get_images_names_path
-from utils import log_metrics, add_gaussian_noise_in_bbox
+from utils import log_metrics, add_grey_background_and_rescale_bbox, add_gaussian_noise_in_bbox
 from config import *
 
 def evaluate(model_name, data, images_n_p, device):
@@ -35,8 +35,11 @@ def evaluate(model_name, data, images_n_p, device):
             else:
                 target = data[image_name]['swapped_object']
             
-            # get the image with the corresponding noise level im the roi 
-            image = add_gaussian_noise_in_bbox(image_path, bbox, noise_level)
+            # get the image with a grey background and the bounding box rescaled
+            image, bbox = add_grey_background_and_rescale_bbox(image_path, bbox)
+            
+            # get the image with the corresponding noise level in the roi
+            image = add_gaussian_noise_in_bbox(image, bbox, noise_level)
 
             # get the input for the model that is
             # prompt with the right notation for indicating the target area
