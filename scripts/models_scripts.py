@@ -45,7 +45,7 @@ def load_model(model_name, device, model_dir, cache_dir):
                 '<|system|>\nA chat between a curious user and an artificial intelligence assistant. '
                 "The assistant gives helpful, detailed, and polite answers to the user's questions.<|end|>\n"
                 f'<|user|>\nWhat is the object in this part of the image <bbox>{x1}, {y1}, {x2}, {y2}</bbox><|end|>\n<|assistant|>\n'
-            )
+            ) # add image in the promt 
 
             language_inputs = tokenizer([prompt], return_tensors="pt")
             inputs.update(language_inputs)
@@ -97,10 +97,6 @@ def load_model(model_name, device, model_dir, cache_dir):
     
             inputs = {
                 "pixel_values": pixel_values.unsqueeze(0)  # Re-add batch dimension if needed for model input
-            }
-
-            inputs = {
-                "pixel_values": [pixel_values]
             }
 
             x1, y1 ,x2, y2 = convert_box(map(int, bbox))
@@ -194,7 +190,7 @@ def load_model(model_name, device, model_dir, cache_dir):
 
         def generate(model, image, bbox):
             # Process image from URL and text prompt
-            
+
             inputs = processor.process(
                 images=[image],
                 text=prompt_text

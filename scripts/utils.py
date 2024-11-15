@@ -1,3 +1,4 @@
+#%%
 # utils.py
 import json
 import os
@@ -9,12 +10,51 @@ def log_metrics(model_name, metrics):
     print(f"Logged metrics for {model_name}")
 
 
-from PIL import Image
+from PIL import Image, ImageOps
 import numpy as np
 
+def add_grey_background_and_rescale_bbox(image, bbox):
+    """
+    Adds a grey square background to the input image, centers the image on it,
+    and rescales the bounding box to correspond to the new image dimensions.
+
+    Args:
+        image (PIL.Image.Image): The input image.
+        bbox (tuple): A tuple describing the bounding box in the format (x, y, w, h).
+
+    Returns:
+        PIL.Image.Image: The new image with a grey background.
+        tuple: The rescaled bounding box in the format (x, y, w, h).
+    """
+    # Unpack the bounding box
+    x, y, w, h = bbox
+    
+    # Determine the size of the new square background
+    max_dim = max(image.width, image.height)
+    new_size = (max_dim, max_dim)
+    
+    # Create a new grey background image
+    grey_background = Image.new("RGB", new_size, color=(128, 128, 128))
+    
+    # Calculate the position to center the original image
+    offset_x = (max_dim - image.width) // 2
+    offset_y = (max_dim - image.height) // 2
+    
+    # Paste the original image onto the grey background
+    grey_background.paste(image, (offset_x, offset_y))
+    
+    # Rescale the bounding box to the new image dimensions
+    new_bbox = (x + offset_x, y + offset_y, w, h)
+    
+    return grey_background, new_bbox
+
 def add_gaussian_noise_in_bbox(image_path, bbox, noise_level=0.0):
+
     # Add noise to the image within the bounding box
     image = Image.open(image_path)
+
+    image, bbox = add_grey_background_and_rescale_bbox(image, bbox)
+
     image_np = np.array(image)
     
     # Box notation [x, y, w, h]
