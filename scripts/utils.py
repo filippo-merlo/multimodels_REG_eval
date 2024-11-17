@@ -1,6 +1,8 @@
 # utils.py
 import json
-import os
+from PIL import Image, ImageOps
+import numpy as np
+
 
 def log_metrics(model_name, metrics):
     log_path = f"outputs/logs/{model_name}_log.json"
@@ -8,9 +10,6 @@ def log_metrics(model_name, metrics):
         json.dump(metrics, f)
     print(f"Logged metrics for {model_name}")
 
-
-from PIL import Image, ImageOps
-import numpy as np
 
 def add_grey_background_and_rescale_bbox(image_path, bbox):
     """
@@ -80,3 +79,22 @@ def add_gaussian_noise_in_bbox(image, bbox, noise_level=0.0):
     noisy_image = Image.fromarray(image_np)
     
     return noisy_image
+
+ # Normalize box diamentions
+def normalize_box(bbox, image_width=1025, image_height=1025):
+    return (
+        round(float(bbox[0] / image_width), 4),
+        round(float(bbox[1] / image_height), 4),
+        round(float(bbox[2] / image_width), 4),
+        round(float(bbox[3] / image_height), 4),
+    )
+
+def convert_box(bbox):
+    x, y, w, h = tuple(bbox) # Box coordinates are in (left, top, width, height) format
+    return [x, y, x+w, y+h]
+
+def convert_bbox_to_point(bbox):
+    x, y, w, h = tuple(bbox)
+    x1 = round(float(x + w/2),4)
+    y1 = round(float(y + h/2),4)
+    return (x1, y1)

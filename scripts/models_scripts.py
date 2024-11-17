@@ -1,20 +1,8 @@
 import torch
 from PIL import Image
-
+from utils import convert_box, normalize_box, convert_bbox_to_point
 # prompt base: What is the object in this part of the image <bbox>?
 
- # Normalize box diamentions
-def normalize_box(bbox, image_width=1025, image_height=1025):
-    return (
-        round(float(bbox[0] / image_width), 4),
-        round(float(bbox[1] / image_height), 4),
-        round(float(bbox[2] / image_width), 4),
-        round(float(bbox[3] / image_height), 4),
-    )
-
-def convert_box(bbox):
-    x, y, w, h = tuple(bbox) # Box coordinates are in (left, top, width, height) format
-    return [x, y, x+w, y+h]
 
 def load_model(model_name, device, model_dir, cache_dir):
 
@@ -138,8 +126,8 @@ def load_model(model_name, device, model_dir, cache_dir):
         # Load Kosmos-2 model and processor
         from transformers import Kosmos2ForConditionalGeneration, AutoProcessor
         
-        model = Kosmos2ForConditionalGeneration.from_pretrained(model_name, cache_dir=model_dir)
-        processor = AutoProcessor.from_pretrained(model_name, cache_dir=cache_dir)
+        model = Kosmos2ForConditionalGeneration.from_pretrained(model_name, trust_remote_code=True, cache_dir=model_dir)
+        processor = AutoProcessor.from_pretrained(model_name, trust_remote_code=True, cache_dir=cache_dir)
         model = model.to(device)
         model.eval()
 
@@ -179,27 +167,19 @@ def load_model(model_name, device, model_dir, cache_dir):
     elif model_name == 'allenai/Molmo-7B-O-0924':
         from transformers import AutoModelForCausalLM, AutoProcessor, GenerationConfig
         # Load the processor and model
-        processor = AutoProcessor.from_pretrained(
-            model_name,
-            trust_remote_code=True,
-            torch_dtype='auto',
-            device_map='auto'
-        )
-        model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            trust_remote_code=True,
-            torch_dtype='auto',
-            device_map='auto'
-        )
+        processor = AutoProcessor.from_pretrained( model_name, trust_remote_code=True, cache_dir=cache_dir)
+        model = AutoModelForCausalLM.from_pretrained( model_name, trust_remote_code=True, cache_dir=model_dir)
         model = model.to(device)
         model.eval()
 
         def generate(model, image, bbox):
-            # Process image from URL and text prompt
+            x1, y1 = convert_bbox_to_point(bbox)
+            prompt=f"What is the object at point x = {x1}, y = {y1} of the image?"
 
+            # Process image from URL and text prompt
             inputs = processor.process(
                 images=[image],
-                text=prompt_text
+                text=prompt
             )
 
             # Move inputs to the correct device and create a batch of size 1
