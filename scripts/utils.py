@@ -52,9 +52,6 @@ def add_grey_background_and_rescale_bbox(image_path, bbox):
 def add_gaussian_noise_in_bbox(image, bbox, noise_level=0.0):
 
     # Add noise to the image within the bounding box
-
-    image, bbox = add_grey_background_and_rescale_bbox(image, bbox)
-
     image_np = np.array(image)
     
     # Box notation [x, y, w, h]
