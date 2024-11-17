@@ -47,7 +47,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             prompt = (
                 '<|system|>\nA chat between a curious user and an artificial intelligence assistant. '
                 "The assistant gives helpful, detailed, and polite answers to the user's questions.<|end|>\n"
-                f'<|user|>\n<image>What is the object in this part <bbox>[{x1}, {y1}][{x2}, {y2}]</bbox> of the image<|end|>\n<|assistant|>\n'
+                f'<|user|>\n<image>What is the object in this part <bbox>[{x1}, {y1}][{x2}, {y2}]</bbox> of the image?<|end|>\n<|assistant|>\n'
             ) # add image in the promt 
 
             language_inputs = tokenizer([prompt], return_tensors="pt")
@@ -110,7 +110,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             prompt = (
                 '<|system|>\nA chat between a curious user and an artificial intelligence assistant. '
                 "The assistant gives helpful, detailed, and polite answers to the user's questions.<|end|>\n"
-                f'<|user|>\n<image>What is the object in this part <bbox>[{x1}, {y1}][{x2}, {y2}]</bbox> of the image<|end|>\n<|assistant|>\n'
+                f'<|user|>\n<image>What is the object in this part <bbox>[{x1}, {y1}][{x2}, {y2}]</bbox> of the image?<|end|>\n<|assistant|>\n'
             ) # add image in the promt 
 
             # Tokenize the prompt and prepare inputs
