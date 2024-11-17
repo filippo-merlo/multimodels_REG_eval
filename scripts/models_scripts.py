@@ -199,6 +199,12 @@ def load_model(model_name, device, model_dir, cache_dir):
             return generated_text
 
         return model, generate
+    
+    if model_name == 'jadechoghari/Ferret-UI-Gemma2b':
+        from 
+        def generate(model, image, bbox):
+
+        return model, generate
     else:
         # other models
         return model, generate
