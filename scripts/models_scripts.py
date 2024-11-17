@@ -211,7 +211,7 @@ def load_model(model_name, device, model_dir, cache_dir):
                 prompt=prompt, 
                 conv_mode="ferret_gemma_instruct", 
                 model_path=model_name, 
-                box=map(int(convert_box(bbox)))
+                box=map(int, convert_box(bbox))
             )
             return generated_text
 
