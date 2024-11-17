@@ -39,12 +39,15 @@ def load_model(model_name, device, model_dir, cache_dir):
                 "pixel_values": [pixel_values]
             }
 
-            x1, y1 ,x2, y2 = convert_box(map(int, bbox))
+            W = image.size[0]
+            H = image.size[1]
+            normalized_bbox = normalize_box(convert_box(bbox), W, H)
+            x1, y1 ,x2, y2 = normalized_bbox
 
             prompt = (
                 '<|system|>\nA chat between a curious user and an artificial intelligence assistant. '
                 "The assistant gives helpful, detailed, and polite answers to the user's questions.<|end|>\n"
-                f'<|user|>\nWhat is the object in this part <bbox>{x1}, {y1}, {x2}, {y2}</bbox> of the image <image><|end|>\n<|assistant|>\n'
+                f'<|user|>\n<image>What is the object in this part <bbox>[{x1}, {y1}][{x2}, {y2}]</bbox> of the image<|end|>\n<|assistant|>\n'
             ) # add image in the promt 
 
             language_inputs = tokenizer([prompt], return_tensors="pt")
@@ -99,12 +102,15 @@ def load_model(model_name, device, model_dir, cache_dir):
                 "pixel_values": pixel_values.unsqueeze(0)  # Re-add batch dimension if needed for model input
             }
 
-            x1, y1 ,x2, y2 = convert_box(map(int, bbox))
+            W = image.size[0]
+            H = image.size[1]
+            normalized_bbox = normalize_box(convert_box(bbox), W, H)
+            x1, y1 ,x2, y2 = normalized_bbox
 
             prompt = (
                 '<|system|>\nA chat between a curious user and an artificial intelligence assistant. '
                 "The assistant gives helpful, detailed, and polite answers to the user's questions.<|end|>\n"
-                f'<|user|>\nWhat is the object in this part <bbox>{x1}, {y1}, {x2}, {y2}</bbox> of the image <image><|end|>\n<|assistant|>\n'
+                f'<|user|>\n<image>What is the object in this part <bbox>[{x1}, {y1}][{x2}, {y2}]</bbox> of the image<|end|>\n<|assistant|>\n'
             ) # add image in the promt 
 
             # Tokenize the prompt and prepare inputs
