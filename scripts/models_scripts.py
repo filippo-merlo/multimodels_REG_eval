@@ -215,6 +215,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             )
             return generated_text
 
+        model = None
         return model, generate
     else:
         # other models
