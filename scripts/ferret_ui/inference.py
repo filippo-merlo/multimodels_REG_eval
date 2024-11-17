@@ -1,10 +1,8 @@
 import subprocess
 import os
-import subprocess
 from PIL import Image, ImageDraw
 import re
 import json
-import subprocess
 
 def process_inference_results(results, process_image=False):
     """
