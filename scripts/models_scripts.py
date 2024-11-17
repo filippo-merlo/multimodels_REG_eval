@@ -208,6 +208,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             image.save(image_path)
             model = ''
             bbox = map(int, convert_box(bbox))
+            print(bbox)
             prompt = 'What is the object in this part of the image?'
             generated_text = inference_and_run(
                 image_path=image_path, 
