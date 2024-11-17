@@ -1,11 +1,10 @@
-import torch
 from PIL import Image
 from utils import convert_box, normalize_box, convert_bbox_to_point
 # prompt base: What is the object in this part of the image <bbox>?
 
 
 def load_model(model_name, device, model_dir, cache_dir):
-
+    import torch
     # BLIP-3
     if model_name == 'Salesforce/xgen-mm-phi3-mini-instruct-singleimg-r-v1.5':
         from transformers import AutoModelForVision2Seq, AutoTokenizer, AutoImageProcessor
