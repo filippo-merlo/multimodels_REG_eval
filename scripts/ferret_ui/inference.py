@@ -19,8 +19,7 @@ def process_inference_results(results, process_image=False):
     extracted_texts = []
 
     for result in results:
-        image_path = result['image_path']
-        img = Image.open(image_path).convert("RGB")
+        img = result['image'].convert("RGB")
         draw = ImageDraw.Draw(img)
 
         bbox_str = re.search(r'\[\[([0-9,\s]+)\]\]', result['text'])
@@ -39,15 +38,15 @@ def process_inference_results(results, process_image=False):
 
     return extracted_texts
 
-def inference_and_run(image_path, prompt, conv_mode="ferret_gemma_instruct", model_path="jadechoghari/Ferret-UI-Gemma2b", box=None, process_image=False):
+def inference_and_run(image, prompt, conv_mode="ferret_gemma_instruct", model_path="jadechoghari/Ferret-UI-Gemma2b", box=None, process_image=False):
     """
     Run the inference and capture the errors for debugging.
     """
     data_input = [{
         "id": 0,
-        "image": os.path.basename(image_path),
-        "image_h": Image.open(image_path).height,
-        "image_w": Image.open(image_path).width,
+        "image": image,
+        "image_h": image.height,
+        "image_w": image.width,
         "conversations": [{"from": "human", "value": f"<image>\n{prompt}"}]
     }]
     
@@ -63,7 +62,7 @@ def inference_and_run(image_path, prompt, conv_mode="ferret_gemma_instruct", mod
         "python", "-m", "model_UI", 
         "--model_path", model_path,
         "--data_path", "eval.json", 
-        "--image_path", ".", 
+        "--image", ".", 
         "--answers_file", "eval_output.jsonl", 
         "--num_beam", "1", 
         "--max_new_tokens", "32",
