@@ -207,13 +207,14 @@ def load_model(model_name, device, model_dir, cache_dir):
             image_path = '/mnt/cimec-storage6/users/filippo.merlo/sceneREG_data/temporary_save/image.jpg'
             image.save(image_path)
             model = ''
+            bbox = map(int, convert_box(bbox))
             prompt = 'What is the object in this part of the image?'
             generated_text = inference_and_run(
                 image_path=image_path, 
                 prompt=prompt, 
                 conv_mode="ferret_gemma_instruct", 
                 model_path=model_name, 
-                box=map(int, convert_box(bbox))
+                box=bbox
             )
             return generated_text
 
