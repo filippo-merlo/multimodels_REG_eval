@@ -73,7 +73,7 @@ def inference_and_run(image_path, prompt, conv_mode="ferret_gemma_instruct", mod
     if box:
         cmd.extend(["--region_format", "box", "--add_region_feature"])
 
-    try:
+   
         result = subprocess.run(cmd, check=True, capture_output=True, text=True)
         print(f"Subprocess output:\n{result.stdout}")
         print(f"Subprocess error (if any):\n{result.stderr}")
@@ -95,7 +95,4 @@ def inference_and_run(image_path, prompt, conv_mode="ferret_gemma_instruct", mod
             print("Output folder not found.")
             return None, None
 
-    except subprocess.CalledProcessError as e:
-        print(f"Error occurred during inference:\n{e}")
-        print(f"Subprocess output:\n{e.output}")
-        return None, None
+   
