@@ -37,7 +37,7 @@ def evaluate(model_name, data, images_n_p, device):
             
             # get the image with a grey background and the bounding box rescaled
             image, bbox = add_grey_background_and_rescale_bbox(image_path, bbox)
-            
+
             # get the image with the corresponding noise level in the roi
             image = add_gaussian_noise_in_bbox(image, bbox, noise_level)
 
@@ -78,6 +78,7 @@ if __name__ == "__main__":
     # python evaluate.py --model_name Salesforce/xgen-mm-phi3-mini-instruct-singleimg-r-v1.5 --device cuda
     # python evaluate.py --model_name Salesforce/xgen-mm-phi3-mini-instruct-r-v1 --device cuda
     # python evaluate.py --model_name 'microsoft/kosmos-2-patch14-224' --device cuda
+    # python evaluate.py --model_name 'allenai/Molmo-7B-O-0924' --device cuda
 
     # Load data
     data = load_dataset()
