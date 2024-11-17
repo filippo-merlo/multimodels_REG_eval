@@ -79,6 +79,7 @@ if __name__ == "__main__":
     # python evaluate.py --model_name Salesforce/xgen-mm-phi3-mini-instruct-r-v1 --device cuda
     # python evaluate.py --model_name 'microsoft/kosmos-2-patch14-224' --device cuda
     # python evaluate.py --model_name 'allenai/Molmo-7B-O-0924' --device cuda
+    # python evaluate.py --model_name 'jadechoghari/Ferret-UI-Gemma2b' --device cuda
 
     # Load data
     data = load_dataset()

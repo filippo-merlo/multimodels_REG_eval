@@ -206,13 +206,14 @@ def load_model(model_name, device, model_dir, cache_dir):
         def generate(model, image, bbox):
             model = ''
             prompt = 'What is the object in this part of the image?'
-            inference_text = inference_and_run(
+            generated_text = inference_and_run(
                 image=image, 
                 prompt=prompt, 
                 conv_mode="ferret_gemma_instruct", 
                 model_path=model_name, 
                 box=map(int(convert_box(bbox)))
             )
+            return generated_text
 
         return model, generate
     else:
