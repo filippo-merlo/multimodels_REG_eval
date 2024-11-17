@@ -53,10 +53,10 @@ def inference_and_run(image, prompt, conv_mode="ferret_gemma_instruct", model_pa
     if box:
         data_input[0]["box_x1y1x2y2"] = [[box]]
 
-    with open("eval.json", "w") as json_file:
-        json.dump(data_input, json_file)
-    
-    print("eval.json file created successfully.")
+    #with open("eval.json", "w") as json_file:
+    #    json.dump(data_input, json_file)
+    #
+    #print("eval.json file created successfully.")
     
     cmd = [
         "python", "-m", "model_UI", 
@@ -76,23 +76,23 @@ def inference_and_run(image, prompt, conv_mode="ferret_gemma_instruct", model_pa
         result = subprocess.run(cmd, check=True, capture_output=True, text=True)
         print(f"Subprocess output:\n{result.stdout}")
         print(f"Subprocess error (if any):\n{result.stderr}")
-        print(f"Inference completed. Output written to eval_output.jsonl")
-
-        output_folder = 'eval_output.jsonl'
-        if os.path.exists(output_folder):
-            json_files = [f for f in os.listdir(output_folder) if f.endswith(".jsonl")]
-            if json_files:
-                output_file_path = os.path.join(output_folder, json_files[0])
-                with open(output_file_path, "r") as output_file:
-                    results = [json.loads(line) for line in output_file]
-                
-                return process_inference_results(results, process_image)
-            else:
-                print("No output JSONL files found.")
-                return None, None
-        else:
-            print("Output folder not found.")
-            return None, None
+        #print(f"Inference completed. Output written to eval_output.jsonl")
+#
+        #output_folder = 'eval_output.jsonl'
+        #if os.path.exists(output_folder):
+        #    json_files = [f for f in os.listdir(output_folder) if f.endswith(".jsonl")]
+        #    if json_files:
+        #        output_file_path = os.path.join(output_folder, json_files[0])
+        #        with open(output_file_path, "r") as output_file:
+        #            results = [json.loads(line) for line in output_file]
+        #        
+        #        return process_inference_results(results, process_image)
+        #    else:
+        #        print("No output JSONL files found.")
+        #        return None, None
+        #else:
+        #    print("Output folder not found.")
+        #    return None, None
 
     except subprocess.CalledProcessError as e:
         print(f"Error occurred during inference:\n{e}")
