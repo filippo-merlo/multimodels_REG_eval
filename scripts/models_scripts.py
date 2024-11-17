@@ -167,8 +167,8 @@ def load_model(model_name, device, model_dir, cache_dir):
     elif model_name == 'allenai/MolmoE-1B-0924':
         from transformers import AutoModelForCausalLM, AutoProcessor, GenerationConfig
         # Load the processor and model
-        processor = AutoProcessor.from_pretrained( model_name, trust_remote_code=True, cache_dir=cache_dir)
-        model = AutoModelForCausalLM.from_pretrained( model_name, trust_remote_code=True, cache_dir=model_dir)
+        processor = AutoProcessor.from_pretrained( model_name, torch_dtype='auto', trust_remote_code=True, cache_dir=cache_dir)
+        model = AutoModelForCausalLM.from_pretrained( model_name, torch_dtype='auto', trust_remote_code=True, cache_dir=model_dir)
         model = model.to(device)
         model.eval()
 
