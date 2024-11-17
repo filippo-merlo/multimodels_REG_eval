@@ -5,21 +5,8 @@ from PIL import Image, ImageDraw
 import re
 import json
 import subprocess
-import io
 
-# Function to convert PIL image to a string
-def image_to_string(image):
-    buffer = io.BytesIO()
-    image.save(buffer, format="PNG")  # Save image in a specific format (e.g., PNG)
-    image_str = buffer.getvalue()    # Get byte representation
-    return image_str
-
-# Function to convert string back to a PIL image
-def string_to_image(image_str):
-    buffer = io.BytesIO(image_str)   # Create a byte stream from the string
-    image = Image.open(buffer)       # Open the image from the byte stream
-    return image
-
+e
 def process_inference_results(results, process_image=False):
     """
     Process the inference results by:
@@ -33,7 +20,7 @@ def process_inference_results(results, process_image=False):
     extracted_texts = []
 
     for result in results:
-        img =string_to_image(result['image']).convert("RGB")
+        img = result['image'].convert("RGB")
         draw = ImageDraw.Draw(img)
 
         bbox_str = re.search(r'\[\[([0-9,\s]+)\]\]', result['text'])
@@ -58,7 +45,7 @@ def inference_and_run(image, prompt, conv_mode="ferret_gemma_instruct", model_pa
     """
     data_input = [{
         "id": 0,
-        "image": image_to_string(image),
+        "image": image,
         "image_h": image.height,
         "image_w": image.width,
         "conversations": [{"from": "human", "value": f"<image>\n{prompt}"}]
