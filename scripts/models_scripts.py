@@ -164,7 +164,7 @@ def load_model(model_name, device, model_dir, cache_dir):
         return model, generate
 
 
-    elif model_name == 'allenai/MolmoE-1B-0924':
+    elif model_name == 'cyan2k/molmo-7B-D-bnb-4bit':
         from transformers import AutoModelForCausalLM, AutoProcessor, GenerationConfig
         # Load the processor and model
         processor = AutoProcessor.from_pretrained( model_name, torch_dtype='auto', device_map='auto', trust_remote_code=True, cache_dir=cache_dir)
