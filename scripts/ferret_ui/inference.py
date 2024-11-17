@@ -6,7 +6,6 @@ import re
 import json
 import subprocess
 
-e
 def process_inference_results(results, process_image=False):
     """
     Process the inference results by:
