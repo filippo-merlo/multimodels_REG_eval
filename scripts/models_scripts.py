@@ -221,14 +221,14 @@ def load_model(model_name, device, model_dir, cache_dir):
         from transformers.generation import GenerationConfig
         import torch
 
-        tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen-VL", trust_remote_code=True, cache_dir=cache_dir)
-        model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen-VL", device_map="cuda", trust_remote_code=True, cache_dir=model_dir).eval()
+        tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True, cache_dir=cache_dir)
+        model = AutoModelForCausalLM.from_pretrained(model_name, device_map="cuda", trust_remote_code=True, cache_dir=model_dir).eval()
 
         
         def generate(model, image, bbox):
 
             query = tokenizer.from_list_format([
-                {'image': 'https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg'},
+                {'image': image},
                 {'text': 'Generate the caption in English with grounding:'},
             ])
             inputs = tokenizer(query, return_tensors='pt')
