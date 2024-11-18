@@ -31,7 +31,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             normalized_bbox = normalize_box(convert_box(bbox), W, H)
             x1, y1 ,x2, y2 = normalized_bbox
 
-           prompt = (
+            prompt = (
                 "<|system|>\nA chat between a curious user and an artificial intelligence assistant. "
                 "The assistant gives helpful, detailed, and polite answers to the user's questions.<|end|>\n"
                 f"<|user|>\n<image>What is the object in this part <bbox>[{x1}, {y1}][{x2}, {y2}]</bbox> of the image? Answer with the object's name only. Can be Nothing.<|end|>\n<|assistant|>\n"
@@ -220,25 +220,24 @@ def load_model(model_name, device, model_dir, cache_dir):
         from transformers import AutoModelForCausalLM, AutoTokenizer
         from transformers.generation import GenerationConfig
         import torch
-        torch.manual_seed(1234)
 
-        tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen-VL", trust_remote_code=True)
-        model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen-VL", device_map="cuda", trust_remote_code=True).eval()
+        tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen-VL", trust_remote_code=True, cache_dir=cache_dir)
+        model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen-VL", device_map="cuda", trust_remote_code=True, cache_dir=model_dir).eval()
 
-        # Specify hyperparameters for generation (No need to do this if you are using transformers>=4.32.0)
-        # model.generation_config = GenerationConfig.from_pretrained("Qwen/Qwen-VL", trust_remote_code=True)
+        
+        def generate(model, image, bbox):
 
-        query = tokenizer.from_list_format([
-            {'image': 'https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg'},
-            {'text': 'Generate the caption in English with grounding:'},
-        ])
-        inputs = tokenizer(query, return_tensors='pt')
-        inputs = inputs.to(model.device)
-        pred = model.generate(**inputs)
-        response = tokenizer.decode(pred.cpu()[0], skip_special_tokens=False)
-        print(response)
-        # <img>https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg</img>Generate the caption in English with grounding:<ref> Woman</ref><box>(451,379),(731,806)</box> and<ref> her dog</ref><box>(219,424),(576,896)</box> playing on the beach<|endoftext|>
-        image = tokenizer.draw_bbox_on_latest_picture(response)
+            query = tokenizer.from_list_format([
+                {'image': 'https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg'},
+                {'text': 'Generate the caption in English with grounding:'},
+            ])
+            inputs = tokenizer(query, return_tensors='pt')
+            inputs = inputs.to(model.device)
+            pred = model.generate(**inputs)
+            response = tokenizer.decode(pred.cpu()[0], skip_special_tokens=False)
+            print(response)
+            # <img>https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg</img>Generate the caption in English with grounding:<ref> Woman</ref><box>(451,379),(731,806)</box> and<ref> her dog</ref><box>(219,424),(576,896)</box> playing on the beach<|endoftext|>
+            #image = tokenizer.draw_bbox_on_latest_picture(response)
        
     else:
         # other models

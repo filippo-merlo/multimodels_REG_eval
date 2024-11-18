@@ -89,6 +89,13 @@ def normalize_box(bbox, image_width=1025, image_height=1025):
         round(float(bbox[3] / image_height), 4),
     )
 
+def normalize_box_N(bbox, image_width=1025, image_height=1025, N = 1000):
+    return (
+        round(float(bbox[0] / image_width), 4) * N,
+        round(float(bbox[1] / image_height), 4) * N,
+        round(float(bbox[2] / image_width), 4) * N,
+        round(float(bbox[3] / image_height), 4) * N,
+    )
 def convert_box(bbox):
     x, y, w, h = tuple(bbox) # Box coordinates are in (left, top, width, height) format
     return [x, y, x+w, y+h]
