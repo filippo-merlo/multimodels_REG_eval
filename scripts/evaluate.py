@@ -81,9 +81,7 @@ if __name__ == "__main__":
     # python evaluate.py --model_name 'allenai/MolmoE-1B-0924' --device cuda
     # python evaluate.py --model_name 'allenai/Molmo-7B-O-0924' --device cuda
     # python evaluate.py --model_name 'cyan2k/molmo-7B-D-bnb-4bit' --device cuda
-    # python evaluate.py --model_name 'Qwen/Qwen-VL' --device cuda
-
-
+    # python evaluate.py --model_name 'Qwen/Qwen2-VL-7B-Instruct-GPTQ-Int4' --device cuda
 
     # Load data
     data = load_dataset()
