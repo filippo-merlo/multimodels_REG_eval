@@ -164,10 +164,23 @@ def load_model(model_name, device, model_dir, cache_dir):
 
 
     elif model_name == 'cyan2k/molmo-7B-D-bnb-4bit': # Quantized veraion
-        from transformers import AutoModelForCausalLM, AutoProcessor, GenerationConfig
+        from transformers import AutoModelForCausalLM, AutoProcessor, GenerationConfig, BitsAndBytesConfig
+
+        # Define quantization configuration
+        quant_config = BitsAndBytesConfig(
+            load_in_4bit=True,  # Or load_in_8bit=True for 8-bit quantization
+            quantization_method="nearest"  # Replace with appropriate method if needed
+        )
         # Load the processor and model
         processor = AutoProcessor.from_pretrained( model_name, torch_dtype='auto', device_map='auto', trust_remote_code=True, cache_dir=cache_dir)
-        model = AutoModelForCausalLM.from_pretrained( model_name, torch_dtype='auto', device_map='auto', trust_remote_code=True, cache_dir=model_dir)
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name, 
+            torch_dtype='auto', 
+            device_map='auto', 
+            trust_remote_code=True, 
+            cache_dir=model_dir,
+            quantization_config=quant_config)
+        
         model = model.to(device)
         model.eval()
 
