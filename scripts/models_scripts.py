@@ -164,18 +164,25 @@ def load_model(model_name, device, model_dir, cache_dir):
 
 
     elif model_name == 'cyan2k/molmo-7B-D-bnb-4bit': # Quantized veraion
-        from transformers import AutoModelForCausalLM, AutoProcessor, GenerationConfig, BitsAndBytesConfig
+        from transformers import (
+            AutoModelForCausalLM,
+            AutoProcessor,
+            GenerationConfig,
+        )
+        from PIL import Image
 
         # Load the processor and model
-        processor = AutoProcessor.from_pretrained(model_name, device_map='auto', torch_dtype= "auto", trust_remote_code=True, cache_dir=cache_dir)
+        arguments = {"device_map": "auto", "torch_dtype": "auto", "trust_remote_code": True}
+        processor = AutoProcessor.from_pretrained(
+            model_name,
+            **arguments, 
+            cache_dir=cache_dir)
+        
         model = AutoModelForCausalLM.from_pretrained(
             model_name, 
-            device_map='auto', 
-            torch_dtype= "auto"
-            trust_remote_code=True, 
+            **arguments,
             cache_dir=model_dir)
         
-        model = model.to(device)
         model.eval()
 
         def generate(model, image, bbox):
