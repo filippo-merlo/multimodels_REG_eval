@@ -185,11 +185,12 @@ def load_model(model_name, device, model_dir, cache_dir):
             inputs = {k: v.to(model.device).unsqueeze(0) for k, v in inputs.items()}
 
             # Generate output with configured generation settings
-            output = model.generate_from_batch(
-                inputs,
-                GenerationConfig(max_new_tokens=200, stop_strings=["<|endoftext|>"]),
-                tokenizer=processor.tokenizer
-            )
+            with torch.autocast("cuda", enabled=True, dtype=torch.bfloat16):
+                output = model.generate_from_batch(
+                    inputs,
+                    GenerationConfig(max_new_tokens=200, stop_strings=["<|endoftext|>"]),
+                    tokenizer=processor.tokenizer
+                )
 
             # Decode generated tokens to text
             generated_tokens = output[0, inputs['input_ids'].size(1):]
