@@ -31,10 +31,10 @@ def load_model(model_name, device, model_dir, cache_dir):
             normalized_bbox = normalize_box(convert_box(bbox), W, H)
             x1, y1 ,x2, y2 = normalized_bbox
 
-            prompt = (
-                '<|system|>\nA chat between a curious user and an artificial intelligence assistant. '
+           prompt = (
+                "<|system|>\nA chat between a curious user and an artificial intelligence assistant. "
                 "The assistant gives helpful, detailed, and polite answers to the user's questions.<|end|>\n"
-                f'<|user|>\n<image>What is the object in this part <bbox>[{x1}, {y1}][{x2}, {y2}]</bbox> of the image? Can be Nothing.<|end|>\n<|assistant|>\n'
+                f"<|user|>\n<image>What is the object in this part <bbox>[{x1}, {y1}][{x2}, {y2}]</bbox> of the image? Answer with the object's name only. Can be Nothing.<|end|>\n<|assistant|>\n"
             ) # add image in the promt 
 
             language_inputs = tokenizer([prompt], return_tensors="pt")
@@ -95,9 +95,9 @@ def load_model(model_name, device, model_dir, cache_dir):
             x1, y1 ,x2, y2 = normalized_bbox
 
             prompt = (
-                '<|system|>\nA chat between a curious user and an artificial intelligence assistant. '
+                "<|system|>\nA chat between a curious user and an artificial intelligence assistant. "
                 "The assistant gives helpful, detailed, and polite answers to the user's questions.<|end|>\n"
-                f'<|user|>\n<image>What is the object in this part <bbox>[{x1}, {y1}][{x2}, {y2}]</bbox> of the image? Can be Nothing.<|end|>\n<|assistant|>\n'
+                f"<|user|>\n<image>What is the object in this part <bbox>[{x1}, {y1}][{x2}, {y2}]</bbox> of the image? Answer with the object's name only. Can be Nothing.<|end|>\n<|assistant|>\n"
             ) # add image in the promt 
 
             # Tokenize the prompt and prepare inputs
@@ -136,7 +136,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             H = image.size[1]
             normalized_bbox = normalize_box(convert_box(bbox), W, H)
 
-            prompt="<grounding>What is the object in <phrase>this part</phrase> of the image?"
+            prompt="<grounding>What is the object in <phrase>this part</phrase> of the image? Answer with the object's name only. Can be Nothing."
 
             # Preprocess the image and prompt
             inputs = processor(images = [image], text = [prompt],  bboxes = [[normalized_bbox]] , return_tensors="pt")
@@ -189,7 +189,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             print('bbox:',bbox)
             x1, y1 = convert_bbox_to_point(bbox)
             print('point:',x1, y1)
-            prompt=f"What is the object at point x = {x1}, y = {y1} of the image?"
+            prompt=f"What is the object at point x = {int(x1)}, y = {int(y1)} of the image? Answer with the object's name only. Can be Nothing."
 
             # Process image from URL and text prompt
             inputs = processor.process(
