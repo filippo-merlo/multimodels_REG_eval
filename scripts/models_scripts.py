@@ -186,7 +186,9 @@ def load_model(model_name, device, model_dir, cache_dir):
         model.eval()
 
         def generate(model, image, bbox):
+            print('bbox:',bbox)
             x1, y1 = convert_bbox_to_point(bbox)
+            print('point:',x1, y1)
             prompt=f"What is the object at point x = {x1}, y = {y1} of the image?"
 
             # Process image from URL and text prompt
