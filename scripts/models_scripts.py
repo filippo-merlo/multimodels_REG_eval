@@ -167,10 +167,11 @@ def load_model(model_name, device, model_dir, cache_dir):
         from transformers import AutoModelForCausalLM, AutoProcessor, GenerationConfig, BitsAndBytesConfig
 
         # Load the processor and model
-        processor = AutoProcessor.from_pretrained( model_name, device_map='auto', trust_remote_code=True, cache_dir=cache_dir)
+        processor = AutoProcessor.from_pretrained(model_name, device_map='auto', torch_dtype= "auto", trust_remote_code=True, cache_dir=cache_dir)
         model = AutoModelForCausalLM.from_pretrained(
             model_name, 
             device_map='auto', 
+            torch_dtype= "auto"
             trust_remote_code=True, 
             cache_dir=model_dir)
         
