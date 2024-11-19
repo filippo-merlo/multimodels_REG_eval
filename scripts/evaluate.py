@@ -111,7 +111,7 @@ def ref_clip_score(target, generated_text, image):
     image_embedding = compute_image_embedding(image)
 
     # Compute CLIP-S (cosine similarity between candidate and image embedding)
-    clip_s = cosine_similarity(target_embedding.unsqueeze(0), image_embedding.unsqueeze(0)).item()
+    clip_s = cosine_similarity(target_embedding.unsqueeze(0), image_embedding).item()
 
     # Compute max reference similarity (cosine similarity between candidate and references)
     ref_sims = cosine_similarity(target_embedding.unsqueeze(0), reference_embeddings.unsqueeze(0))
