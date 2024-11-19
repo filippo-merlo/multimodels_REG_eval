@@ -124,7 +124,7 @@ def ref_clip_score(target, generated_text, image):
     clip_s = (target_embedding @ image_embedding.T).squeeze()
 
     # Compute max reference similarity (cosine similarity between candidate and references)
-    ref_sims = (target_embedding @ reference_embeddings.T).squeeze()
+    ref_sims = [target_embedding @ reference_embeddings.T].squeeze()
     max_ref_sim = torch.max(ref_sims).item()
 
     # Compute harmonic mean of CLIP-S and max reference similarity
