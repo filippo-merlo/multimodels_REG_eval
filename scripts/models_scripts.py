@@ -1,5 +1,5 @@
 from PIL import Image
-from utils import convert_box, normalize_box, convert_bbox_to_point, normalize_box_N
+from utils import convert_box, normalize_box, convert_bbox_to_point, normalize_box_N, normalize_box_cogvlm
 # prompt base: What is the object in this part of the image <bbox>?
 
 
@@ -313,8 +313,10 @@ def load_model(model_name, device, model_dir, cache_dir):
         ).eval() # Load the model and set it to evaluation mode
 
         def generate(model, image, bbox):
+
+            print(normalize_box_cogvlm(bbox))
             
-            question = f"What is the object in this part <|box_start|>()<|box_end|> of the image? Answer with the object's name only. Can be Nothing."
+            question = f"What is the object in this part of the image? Answer with the object's name only. Can be Nothing."
             prompt  = f"A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions. USER: {question} ASSISTANT:"
 
             input_by_model = model.build_conversation_input_ids(
