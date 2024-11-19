@@ -296,7 +296,6 @@ def load_model(model_name, device, model_dir, cache_dir):
         from PIL import Image
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
-        DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
         TORCH_TYPE = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.get_device_capability()[
             0] >= 8 else torch.float16
 
@@ -314,7 +313,33 @@ def load_model(model_name, device, model_dir, cache_dir):
         ).eval() # Load the model and set it to evaluation mode
 
         def generate(model, image, bbox):
-            return "Not implemented"
+            
+            prompt  = "A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions. USER: {} ASSISTANT:"
+
+            input_by_model = model.build_conversation_input_ids(
+                tokenizer,
+                query=prompt,
+                images=[image],
+                template_version='chat'
+            )
+            inputs = {
+                'input_ids': input_by_model['input_ids'].unsqueeze(0).to(model.device),
+                'token_type_ids': input_by_model['token_type_ids'].unsqueeze(0).to(model.device),
+                'attention_mask': input_by_model['attention_mask'].unsqueeze(0).to(model.device),
+                'images': [[input_by_model['images'][0].to(model.device).to(TORCH_TYPE)]] if image is not None else None,
+            }
+            gen_kwargs = {
+                "max_new_tokens": 2048,
+                "pad_token_id": 128002,
+            }
+            with torch.no_grad():
+                outputs = model.generate(**inputs, **gen_kwargs)
+                outputs = outputs[:, inputs['input_ids'].shape[1]:]
+                response = tokenizer.decode(outputs[0])
+                response = response.split("<|end_of_text|>")[0]
+            
+            return response    
+            
         
         return model, generate
     else:
