@@ -291,7 +291,7 @@ def load_model(model_name, device, model_dir, cache_dir):
 
         return model, generate
     
-    elif model_name == '':
+    elif model_name == "THUDM/cogvlm2-llama3-chinese-chat-19B-int4":
         import torch
         from PIL import Image
         from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -306,7 +306,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             trust_remote_code=True
         )
         model = AutoModelForCausalLM.from_pretrained(
-            MODEL_PATH,
+            model_name,
             torch_dtype=TORCH_TYPE,
             trust_remote_code=True,
             low_cpu_mem_usage=True,
