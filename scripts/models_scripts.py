@@ -296,20 +296,21 @@ def load_model(model_name, device, model_dir, cache_dir):
         from PIL import Image
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
-        MODEL_PATH = "THUDM/cogvlm2-llama3-chinese-chat-19B-int4"
         DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
         TORCH_TYPE = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.get_device_capability()[
             0] >= 8 else torch.float16
 
         tokenizer = AutoTokenizer.from_pretrained(
-            MODEL_PATH,
-            trust_remote_code=True
+            model_name,
+            trust_remote_code=True,
+            cache_dir=cache_dir,
         )
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
             torch_dtype=TORCH_TYPE,
             trust_remote_code=True,
             low_cpu_mem_usage=True,
+            cache_dir=model_dir,
         ).eval() # Load the model and set it to evaluation mode
 
         def generate(model, image, bbox):
