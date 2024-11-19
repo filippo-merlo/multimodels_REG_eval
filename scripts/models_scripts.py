@@ -216,7 +216,7 @@ def load_model(model_name, device, model_dir, cache_dir):
 
         return model, generate
     
-    elif model_name == "Qwen/Qwen2-VL-2B-Instruct":
+    elif model_name == "Qwen/Qwen2-VL-2B-Instruct-GPTQ-Int8":
         from transformers import Qwen2VLForConditionalGeneration, AutoTokenizer, AutoProcessor
         from qwen_vl_utils import process_vision_info
 
