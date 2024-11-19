@@ -78,7 +78,7 @@ clip_processor = CLIPProcessor.from_pretrained(model_name)
 
 def compute_image_embedding(image):
     inputs = clip_processor(
-        text=[],
+        text=[""],
         images=image,
         return_tensors="pt",
         padding=True
