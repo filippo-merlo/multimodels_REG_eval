@@ -87,7 +87,7 @@ def compute_image_embedding(image):
    
 def compute_text_embedding(text):
     """Compute text embeddings for a text using CLIP."""
-    tokens = clip_tokenizer([text], return_tensors="pt", padding=True, truncation=True).to(clip_text_model.device)
+    tokens = clip_tokenizer([text], return_tensors="pt", padding=True).to(clip_text_model.device)
     with torch.no_grad():
         text_embeddings = clip_text_model(**tokens).pooler_output
     return text_embeddings
