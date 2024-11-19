@@ -72,10 +72,10 @@ def evaluate(model_name, data, images_n_p, device):
 # Load CLIP model and tokenizer
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-clip_vision_model = CLIPVisionModel.from_pretrained("openai/clip-vit-base-patch32")
+clip_vision_model = CLIPVisionModel.from_pretrained("openai/clip-vit-base-patch32").to(device)
 clip_processor = AutoProcessor.from_pretrained("openai/clip-vit-base-patch32")
 
-clip_text_model = CLIPTextModel.from_pretrained("openai/clip-vit-base-patch32")
+clip_text_model = CLIPTextModel.from_pretrained("openai/clip-vit-base-patch32").to(device)
 clip_tokenizer = AutoTokenizer.from_pretrained("openai/clip-vit-base-patch32")
 
 
