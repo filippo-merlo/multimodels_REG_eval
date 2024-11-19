@@ -294,3 +294,5 @@ def load_model(model_name, device, model_dir, cache_dir):
     else:
         # other models
         return model, generate
+
+
