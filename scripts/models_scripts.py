@@ -246,6 +246,7 @@ def load_model(model_name, device, model_dir, cache_dir):
 
         def generate(model, image, bbox):
             x1, y1, x2, y2 = convert_box(normalize_box_N(bbox))
+            print(convert_box(normalize_box_N(bbox)))
             
             messages = [
                 {
