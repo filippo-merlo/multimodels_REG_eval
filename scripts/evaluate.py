@@ -37,8 +37,6 @@ def evaluate(model_name, data, images_n_p, device):
             else:
                 target = data[image_name]['swapped_object']
 
-            
-            
             # get the image with a grey background and the bounding box rescaled
             image, bbox = add_grey_background_and_rescale_bbox(image_path, bbox)
 
@@ -108,7 +106,7 @@ def ref_clip_score(target, generated_text, image):
     """
 
     # Compute candidate and reference embeddings
-    target_embedding = compute_text_embedding([target]).squeeze(0)
+    target_embedding = compute_text_embedding(target).squeeze(0)
     reference_embeddings = compute_text_embedding(generated_text)
     image_embedding = compute_image_embedding(image)
 
