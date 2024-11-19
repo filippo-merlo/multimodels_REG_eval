@@ -36,6 +36,8 @@ def evaluate(model_name, data, images_n_p, device):
                 target = 'nothing'
             else:
                 target = data[image_name]['swapped_object']
+
+            
             
             # get the image with a grey background and the bounding box rescaled
             image, bbox = add_grey_background_and_rescale_bbox(image_path, bbox)
@@ -54,8 +56,8 @@ def evaluate(model_name, data, images_n_p, device):
             print('output:', output)
             print('\n')
 
-            print(ref_clip_score(target, output, image))
-            
+            print(ref_clip_score(str(target), str(output), image))
+
             results[str(noise_level)+'_target'].append(target)
             results[str(noise_level)+'_output'].append(output)
 
