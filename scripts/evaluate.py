@@ -80,14 +80,14 @@ clip_tokenizer = AutoTokenizer.from_pretrained("openai/clip-vit-base-patch32")
 
 
 def compute_image_embedding(image):
-    inputs = clip_processor(images=image, return_tensors="pt")
+    inputs = clip_processor(images=image, return_tensors="pt").to(clip_vision_model.device)
     with torch.no_grad():
         image_embedding = clip_vision_model(**inputs).pooler_output
     return image_embedding
    
 def compute_text_embedding(text):
     """Compute text embeddings for a text using CLIP."""
-    tokens = clip_tokenizer([text], return_tensors="pt", padding=True, truncation=True).to(device)
+    tokens = clip_tokenizer([text], return_tensors="pt", padding=True, truncation=True).to(clip_text_model.device)
     with torch.no_grad():
         text_embeddings = clip_text_model(**tokens).pooler_output
     return text_embeddings
