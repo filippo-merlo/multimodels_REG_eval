@@ -321,18 +321,22 @@ def load_model(model_name, device, model_dir, cache_dir):
                 tokenizer,
                 query=prompt,
                 images=[image],
+                history = [],
                 template_version='chat'
             )
+
             inputs = {
                 'input_ids': input_by_model['input_ids'].unsqueeze(0).to(model.device),
                 'token_type_ids': input_by_model['token_type_ids'].unsqueeze(0).to(model.device),
                 'attention_mask': input_by_model['attention_mask'].unsqueeze(0).to(model.device),
                 'images': [[input_by_model['images'][0].to(model.device).to(TORCH_TYPE)]] if image is not None else None,
             }
+
             gen_kwargs = {
                 "max_new_tokens": 2048,
                 "pad_token_id": 128002,
             }
+
             with torch.no_grad():
                 outputs = model.generate(**inputs, **gen_kwargs)
                 outputs = outputs[:, inputs['input_ids'].shape[1]:]
