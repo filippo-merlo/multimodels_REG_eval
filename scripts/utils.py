@@ -99,12 +99,22 @@ def normalize_box_N(bbox, image_width=1025, image_height=1025, N = 1000):
 
 
 def normalize_box_cogvlm(bbox, image_width=1025, image_height=1025, N = 1000):
-    return (
+    cohords =  [
         int(round(float(bbox[0] / image_width), 4) * N),
         int(round(float(bbox[1] / image_height), 4) * N),
         int(round(float(bbox[2] / image_width), 4) * N),
         int(round(float(bbox[3] / image_height), 4) * N),
-    )
+    ]
+    final = []
+    for c in cohords: 
+        s = str(c)
+        if len(s) < 3:
+            s = '0' + s
+        final.append(s)
+    return final
+
+    
+
 
 #[[086,540,400,760]]
 

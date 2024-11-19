@@ -314,9 +314,9 @@ def load_model(model_name, device, model_dir, cache_dir):
 
         def generate(model, image, bbox):
 
-            print(normalize_box_cogvlm(bbox))
+            print(normalize_box_cogvlm(convert_box(bbox))
             
-            question = f"What is the object in this part of the image? Answer with the object's name only. Can be Nothing."
+            question = f"What is the object in this part of the image []? Answer with the object's name only. Can be Nothing."
             prompt  = f"A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions. USER: {question} ASSISTANT:"
 
             input_by_model = model.build_conversation_input_ids(
