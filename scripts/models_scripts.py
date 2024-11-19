@@ -1,5 +1,5 @@
 from PIL import Image
-from utils import convert_box, normalize_box, convert_bbox_to_point
+from utils import convert_box, normalize_box, convert_bbox_to_point, normalize_box_N
 # prompt base: What is the object in this part of the image <bbox>?
 
 
@@ -245,15 +245,20 @@ def load_model(model_name, device, model_dir, cache_dir):
         # processor = AutoProcessor.from_pretrained("Qwen/Qwen2-VL-7B-Instruct-GPTQ-Int4", min_pixels=min_pixels, max_pixels=max_pixels)
 
         def generate(model, image, bbox):
+            x1, y1, x2, y2 = convert_box(normalize_box_N(bbox))
+            
             messages = [
                 {
                     "role": "user",
                     "content": [
                         {
                             "type": "image",
-                            "image": "https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg",
+                            "image": image,
                         },
-                        {"type": "text", "text": "Describe this image."},
+                        {
+                            "type": "text",
+                            "text": f"What is the object in this part <|box_start|>({x1},{y1}),({x2},{y2})<|box_end|> of the image? Answer with the object's name only. Can be Nothing."
+                        },
                     ],
                 }
             ]
