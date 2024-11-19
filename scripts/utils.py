@@ -113,11 +113,6 @@ def normalize_box_cogvlm(bbox, image_width=1025, image_height=1025, N = 1000):
         final.append(s)
     return final
 
-    
-
-
-#[[086,540,400,760]]
-
 def convert_box(bbox):
     x, y, w, h = tuple(bbox) # Box coordinates are in (left, top, width, height) format
     return [x, y, x+w, y+h]
