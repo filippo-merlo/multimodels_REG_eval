@@ -5,6 +5,8 @@ from models_scripts import load_model  # Assuming a load_model function is defin
 from data import load_dataset, get_images_names_path
 from utils import log_metrics, add_grey_background_and_rescale_bbox, add_gaussian_noise_in_bbox
 from config import *
+from transformers import AutoTokenizer, CLIPTextModel, AutoProcessor, CLIPVisionModel
+from torch.nn.functional import cosine_similarity
 
 def evaluate(model_name, data, images_n_p, device):
     # Load the model
@@ -52,6 +54,8 @@ def evaluate(model_name, data, images_n_p, device):
             print('output:', output)
             print('\n')
 
+            print(ref_clip_score(target, output, image))
+            
             results[str(noise_level)+'_target'].append(target)
             results[str(noise_level)+'_output'].append(output)
 
@@ -64,9 +68,63 @@ def evaluate(model_name, data, images_n_p, device):
     #log_metrics(model_name, metrics)
     return metrics
 
-def calculate_metrics(results, data):
-    # Placeholder for metric calculation logic
-    return 
+
+# Load CLIP model and tokenizer
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
+clip_vision_model = CLIPVisionModel.from_pretrained("openai/clip-vit-base-patch32")
+clip_processor = AutoProcessor.from_pretrained("openai/clip-vit-base-patch32")
+
+clip_text_model = CLIPTextModel.from_pretrained("openai/clip-vit-base-patch32")
+clip_tokenizer = AutoTokenizer.from_pretrained("openai/clip-vit-base-patch32")
+
+
+def compute_image_embedding(image):
+    inputs = clip_processor(images=image, return_tensors="pt")
+    with torch.no_grad():
+        image_embedding = clip_vision_model(**inputs).pooler_output
+    return image_embedding
+   
+def compute_text_embedding(text):
+    """Compute text embeddings for a text using CLIP."""
+    tokens = clip_tokenizer([text], return_tensors="pt", padding=True, truncation=True).to(device)
+    with torch.no_grad():
+        text_embeddings = clip_text_model(**tokens).pooler_output
+    return text_embeddings
+
+def ref_clip_score(target, generated_text, image):
+    """
+    Compute RefCLIPScore for a candidate text given references and a visual embedding.
+    
+    Args:
+    - candidate (str): The candidate caption.
+    - references (list of str): The list of reference captions.
+    - visual_embedding (torch.Tensor): The CLIP image embedding (1D vector).
+    
+    Returns:
+    - score (float): The RefCLIPScore value.
+    """
+
+    # Compute candidate and reference embeddings
+    target_embedding = compute_text_embedding([target]).squeeze(0)
+    reference_embeddings = compute_text_embedding(generated_text)
+    image_embedding = compute_image_embedding(image)
+
+    # Compute CLIP-S (cosine similarity between candidate and image embedding)
+    clip_s = cosine_similarity(target_embedding.unsqueeze(0), image_embedding.unsqueeze(0)).item()
+
+    # Compute max reference similarity (cosine similarity between candidate and references)
+    ref_sims = cosine_similarity(target_embedding.unsqueeze(0), reference_embeddings.unsqueeze(0))
+    max_ref_sim = torch.max(ref_sims).item()
+
+    # Compute harmonic mean of CLIP-S and max reference similarity
+    if clip_s + max_ref_sim > 0:
+        ref_clip_s = 2 * clip_s * max_ref_sim / (clip_s + max_ref_sim)
+    else:
+        ref_clip_s = 0.0
+
+    return ref_clip_s
+
 
 if __name__ == "__main__":
     import argparse
