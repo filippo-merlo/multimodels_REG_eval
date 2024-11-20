@@ -29,7 +29,7 @@ with open(dataset_path, 'r') as f:
 i = 0 
 for k in dataset.keys():
     if dataset[k]['swapped_object'] == None:
-        if '_clean.jpg' not in k:
+        if '_clean.jpg' not in k and '_original.jpg' not in k:
             print(k)
             i+= 1 
 print(i)
