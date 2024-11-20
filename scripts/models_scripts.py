@@ -158,7 +158,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             generated_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
             processed_text, entities = processor.post_process_generation(generated_text)
             
-            return processed_text.replace("What is the object in <phrase>this part</phrase> of the image? Answer with the object's name only, or 'Nothing' if no object is present. Answer:", "")
+            return processed_text.replace("What is the object in this part of the image? Answer with the object's name only, or 'Nothing' if no object is present. Answer: ", "")
         
         return model, generate
 
