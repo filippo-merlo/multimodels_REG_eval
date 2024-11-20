@@ -18,18 +18,3 @@ model_list = [
     'Salesforce/xgen-mm-phi3-mini-instruct-r-v1',
     'microsoft/kosmos-2-patch14-224',
 ]
-
-
-
-import json
-
-with open(dataset_path, 'r') as f:
-    dataset = json.load(f)
-
-i = 0 
-for k in dataset.keys():
-    if dataset[k]['swapped_object'] == None:
-        if '_clean.jpg' not in k and '_original.jpg' not in k:
-            print(k)
-            i+= 1 
-print(i)
