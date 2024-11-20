@@ -122,3 +122,21 @@ def convert_bbox_to_point(bbox):
     x1 = round(float(x + w/2),4)
     y1 = round(float(y + h/2),4)
     return (x1, y1)
+
+def get_image_patch(image, bbox):
+    """
+    Extract a patch from an image based on a bounding box.
+    
+    Parameters:
+        image (PIL.Image.Image): The input image.
+        bbox (list or tuple): The bounding box in the format [x, y, w, h], 
+                              where (x, y) is the top-left corner, and 
+                              w and h are the width and height.
+                              
+    Returns:
+        PIL.Image.Image: The cropped image patch.
+    """
+    x, y, w, h = bbox
+    # Define the cropping box as (left, upper, right, lower)
+    crop_box = (x, y, x + w, y + h)
+    return image.crop(crop_box)

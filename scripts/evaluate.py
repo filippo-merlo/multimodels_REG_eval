@@ -3,7 +3,7 @@ import torch
 import json
 from models_scripts import load_model  # Assuming a load_model function is defined to load your model
 from data import load_dataset, get_images_names_path
-from utils import log_metrics, add_grey_background_and_rescale_bbox, add_gaussian_noise_in_bbox
+from utils import log_metrics, add_grey_background_and_rescale_bbox, add_gaussian_noise_in_bbox, get_image_patch
 from config import *
 from transformers import CLIPModel, CLIPProcessor
 from torch.nn.functional import cosine_similarity
@@ -43,6 +43,9 @@ def evaluate(model_name, data, images_n_p, device):
             # get the image with the corresponding noise level in the roi
             image = add_gaussian_noise_in_bbox(image, bbox, noise_level)
 
+            image_patch = get_image_patch(image, bbox)
+
+
             # get the input for the model that is
             # prompt with the right notation for indicating the target area
             # the image
@@ -54,7 +57,7 @@ def evaluate(model_name, data, images_n_p, device):
             print('output:', output)
             print('\n')
 
-            print(ref_clip_score(str(target), str(output), image))
+            print(ref_clip_score(str(target), str(output), image_patch))
 
             results[str(noise_level)+'_target'].append(target)
             results[str(noise_level)+'_output'].append(output)
