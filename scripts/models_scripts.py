@@ -136,7 +136,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             H = image.size[1]
             normalized_bbox = normalize_box(convert_box(bbox), W, H)
 
-            prompt="<grounding>What is the object in <phrase>this part</phrase> of the image? Answer with the object's name only, or 'Nothing' if no object is present."
+            prompt="<grounding>What is the object in <phrase>this part</phrase> of the image? Answer with the object's name only, or 'Nothing' if no object is present. Answer:"
 
             # Preprocess the image and prompt
             inputs = processor(images = [image], text = [prompt],  bboxes = [[normalized_bbox]] , return_tensors="pt")
