@@ -29,6 +29,7 @@ def evaluate(model_name, data, images_n_p, device):
             # Exclude images that has been filtered out by the LLAVA filter
             if data[image_name]['excluded']:
                 continue
+            
             bbox = data[image_name]['target_bbox']
             
             if '_original.jpg' in image_name:
