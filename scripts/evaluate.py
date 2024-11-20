@@ -31,9 +31,9 @@ def evaluate(model_name, data, images_n_p, device):
                 continue
             bbox = data[image_name]['target_bbox']
             
-            if 'original' in image_name:
+            if '_original.jpg' in image_name:
                 target = data[image_name]['target'].replace('_', ' ')
-            if 'clean' in image_name:
+            elif '_clean.jpg' in image_name:
                 target = 'nothing'
             else:
                 target = data[image_name]['swapped_object'].replace('_', ' ')
