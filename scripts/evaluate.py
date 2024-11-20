@@ -32,11 +32,11 @@ def evaluate(model_name, data, images_n_p, device):
             bbox = data[image_name]['target_bbox']
             
             if 'original' in image_name:
-                target = data[image_name]['target']
+                target = data[image_name]['target'].replace('_', ' ')
             if 'clean' in image_name:
                 target = 'nothing'
             else:
-                target = data[image_name]['swapped_object']
+                target = data[image_name]['swapped_object'].replace('_', ' ')
 
             # get the image with a grey background and the bounding box rescaled
             image, bbox = add_grey_background_and_rescale_bbox(image_path, bbox)
@@ -53,12 +53,13 @@ def evaluate(model_name, data, images_n_p, device):
             # eventually the bounding box if the model accepts it
             
             output = generate(model, image, bbox)
+            formatted_output = output.replace('_', ' ').lower()
             print('****************')
             print('target:', target)
-            print('output:', output)
+            print('output:', formatted_output)
             print('\n')
 
-            print(ref_clip_score(str(target), str(output), image_patch))
+            print(ref_clip_score(str(target), str(formatted_output), image_patch))
 
             results[str(noise_level)+'_target'].append(target)
             results[str(noise_level)+'_output'].append(output)
