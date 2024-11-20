@@ -28,6 +28,7 @@ with open(dataset_path, 'r') as f:
 
 i = 0 
 for k in dataset.keys():
+    print(k)
     if dataset[k]['target'] == None:
         print(k)
         i+= 1 
