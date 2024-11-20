@@ -28,8 +28,7 @@ with open(dataset_path, 'r') as f:
 
 i = 0 
 for k in dataset.keys():
-    print(dataset[k]['target'])
-    if dataset[k]['target'] == None:
+    if dataset[k]['swapped_object'] == None:
         print(k)
         i+= 1 
 print(i)
