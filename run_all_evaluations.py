@@ -23,7 +23,10 @@ for model_name in model_list:
 
     # Run evaluation as a subprocess to manage memory usage
     for model_name in model_list:
-        subprocess.run(["python", "scripts/evaluate.py", model_name, device])
+        subprocess.run(["python", "scripts/evaluate.py", 
+                        "--model_name", model_name, 
+                        "--device", device],
+                       check=True)
 
         # Free GPU memory
         free_gpu_memory()
