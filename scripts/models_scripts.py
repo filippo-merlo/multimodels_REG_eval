@@ -246,7 +246,6 @@ def load_model(model_name, device, model_dir, cache_dir):
 
         def generate(model, image, bbox):
             x1, y1, x2, y2 = convert_box(normalize_box_N(bbox))
-            print(convert_box(normalize_box_N(bbox)))
             
             messages = [
                 {
@@ -317,7 +316,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             x1, y1, x2, y2 = normalize_box_cogvlm(convert_box(bbox))
             
             question = f"What is the object in this part of the image [{x1}, {y1}, {x2}, {y2}]? Answer with the object's name only. If no object is present, output 'nothing'—no extra text."
-            prompt  = f"A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful answers to the user's questions. USER: {question} ASSISTANT:"
+            prompt  = f"A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions. USER: {question} ASSISTANT:"
 
             input_by_model = model.build_conversation_input_ids(
                 tokenizer,
@@ -348,6 +347,45 @@ def load_model(model_name, device, model_dir, cache_dir):
             return response    
             
         
+        return model, generate
+
+    elif model_name == "llava-hf/llava-onevision-qwen2-0.5b-si-hf":
+        from PIL import Image
+        import torch
+        from transformers import AutoProcessor, LlavaOnevisionForConditionalGeneration
+
+        model_id = "llava-hf/llava-onevision-qwen2-0.5b-si-hf"
+        model = LlavaOnevisionForConditionalGeneration.from_pretrained(
+            model_id, 
+            torch_dtype=torch.float16, 
+            low_cpu_mem_usage=True, 
+            cache_dir=model_dir
+        ).to(device).eval()
+
+        processor = AutoProcessor.from_pretrained(model_id, cache_dir=cache_dir)
+
+        def generate(model, image, bbox):
+            # Define a chat history and use `apply_chat_template` to get correctly formatted prompt
+            # Each value in "content" has to be a list of dicts with types ("text", "image") 
+            x1, y1, x2, y2 = convert_box(normalize_box_N(bbox))
+            conversation = [
+                {
+
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": f"What is the object in this part of the image [{x1}, {y1}, {x2}, {y2}]? Answer with the object's name only. If no object is present, output 'nothing'—no extra text."},
+                    {"type": "image"},
+                    ],
+                },
+            ]
+            prompt = processor.apply_chat_template(conversation, add_generation_prompt=True)
+
+            raw_image = image
+            inputs = processor(images=raw_image, text=prompt, return_tensors='pt').to(0, torch.float16)
+
+            output = model.generate(**inputs, max_new_tokens=200, do_sample=False)
+            print(processor.decode(output[0][2:], skip_special_tokens=True))
+
         return model, generate
     else:
         # other models
