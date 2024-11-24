@@ -34,7 +34,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             prompt = (
                 "<|system|>\nA chat between a curious user and an artificial intelligence assistant. "
                 "The assistant gives helpful, detailed, and polite answers to the user's questions.<|end|>\n"
-                f"<|user|>\n<image>What is the object in this part <bbox>[{x1}, {y1}][{x2}, {y2}]</bbox> of the image? Only output the object's name if one is present. If no object is present, output 'Nothing'—no extra text.<|end|>\n<|assistant|>\n"
+                f"<|user|>\n<image>What is the object in this part <bbox>[{x1}, {y1}][{x2}, {y2}]</bbox> of the image? Answer with the object's name only, or 'Nothing' if no object is present.<|end|>\n<|assistant|>\n"
             ) # add image in the promt 
 
             language_inputs = tokenizer([prompt], return_tensors="pt")
@@ -97,7 +97,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             prompt = (
                 "<|system|>\nA chat between a curious user and an artificial intelligence assistant. "
                 "The assistant gives helpful, detailed, and polite answers to the user's questions.<|end|>\n"
-                f"<|user|>\n<image>What is the object in this part <bbox>[{x1}, {y1}][{x2}, {y2}]</bbox> of the image? Only output the object's name if one is present. If no object is present, output 'Nothing'—no extra text.<|end|>\n<|assistant|>\n"
+                f"<|user|>\n<image>What is the object in this part <bbox>[{x1}, {y1}][{x2}, {y2}]</bbox> of the image? Answer with the object's name only, or 'Nothing' if no object is present.<|end|>\n<|assistant|>\n"
             ) # add image in the promt 
 
             # Tokenize the prompt and prepare inputs
@@ -136,7 +136,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             H = image.size[1]
             normalized_bbox = normalize_box(convert_box(bbox), W, H)
 
-            prompt="<grounding>What is the object in <phrase>this part</phrase> of the image? Only output the object's name if one is present. If no object is present, output 'Nothing'—no extra text. Answer:"
+            prompt="<grounding>What is the object in <phrase>this part</phrase> of the image? Answer with the object's name only, or 'Nothing' if no object is present. Answer:"
 
             # Preprocess the image and prompt
             inputs = processor(images = [image], text = [prompt],  bboxes = [[normalized_bbox]] , return_tensors="pt")
@@ -158,7 +158,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             generated_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
             processed_text, entities = processor.post_process_generation(generated_text)
             
-            return processed_text.replace("What is the object in this part of the image? Only output the object's name if one is present. If no object is present, output 'Nothing'—no extra text. Answer: ", "")
+            return processed_text.replace("What is the object in this part of the image? Answer with the object's name only, or 'Nothing' if no object is present. Answer: ", "")
         
         return model, generate
 
@@ -189,7 +189,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             print('bbox:',bbox)
             x1, y1 = convert_bbox_to_point(bbox)
             print('point:',x1, y1)
-            prompt=f"What is the object at point x = {int(x1)}, y = {int(y1)} of the image? Only output the object's name if one is present. If no object is present, output 'Nothing'—no extra text."
+            prompt=f"What is the object at point x = {int(x1)}, y = {int(y1)} of the image? Answer with the object's name only, or 'Nothing' if no object is present."
 
             # Process image from URL and text prompt
             inputs = processor.process(
@@ -258,7 +258,7 @@ def load_model(model_name, device, model_dir, cache_dir):
                         },
                         {
                             "type": "text",
-                            "text": f"What is the object in this part of the image <|box_start|>({x1},{y1}),({x2},{y2})<|box_end|>? Only output the object's name if one is present. If no object is present, output 'Nothing'—no extra text."
+                            "text": f"What is the object in this part of the image <|box_start|>({x1},{y1}),({x2},{y2})<|box_end|>? Answer with the object's name only, or 'Nothing' if no object is present."
                         },
                     ],
                 }
@@ -316,8 +316,8 @@ def load_model(model_name, device, model_dir, cache_dir):
 
             x1, y1, x2, y2 = normalize_box_cogvlm(convert_box(bbox))
             
-            question = f"What is the object in this part of the image [{x1}, {y1}, {x2}, {y2}]? Only output the object's name if one is present. If no object is present, output 'Nothing'—no extra text."
-            prompt  = f"USER: {question} ASSISTANT:"
+            question = f"What is the object in this part of the image [{x1}, {y1}, {x2}, {y2}]? Answer with the object's name only. If no object is present, output 'nothing'—no extra text."
+            prompt  = f"A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful answers to the user's questions. USER: {question} ASSISTANT:"
 
             input_by_model = model.build_conversation_input_ids(
                 tokenizer,
@@ -340,7 +340,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             }
 
             with torch.no_grad():
-                outputs = model.generate(**inputs, **gen_kwargs, )
+                outputs = model.generate(**inputs, **gen_kwargs)
                 outputs = outputs[:, inputs['input_ids'].shape[1]:]
                 response = tokenizer.decode(outputs[0])
                 response = response.split("<|end_of_text|>")[0]
