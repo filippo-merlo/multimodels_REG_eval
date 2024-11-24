@@ -384,7 +384,8 @@ def load_model(model_name, device, model_dir, cache_dir):
             inputs = processor(images=raw_image, text=prompt, return_tensors='pt').to(0, torch.float16)
 
             output = model.generate(**inputs, max_new_tokens=200, do_sample=False)
-            print(processor.decode(output[0][2:], skip_special_tokens=True))
+            output_text = processor.decode(output[0][2:], skip_special_tokens=True)
+            return output_text
 
         return model, generate
     else:
