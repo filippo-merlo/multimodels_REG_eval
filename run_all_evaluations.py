@@ -1,7 +1,7 @@
 # run_all_evaluations.py
 import subprocess
 from scripts.manage_gpu import free_gpu_memory
-from scripts.config import model_list
+from scripts.config import model_list, model_dir, cache_dir
 
 models_to_evaluate = ["model1", "model2", "model3"]
 device = "cuda:0"  # Specify GPU device
@@ -11,7 +11,7 @@ for model_name in models_to_evaluate:
     
     # Run evaluation as a subprocess to manage memory usage
     for model_name in model_list:
-        subprocess.run(["python", "scripts/evaluate.py", model_name, device])
+        subprocess.run(["python", "scripts/evaluate.py", model_name, device, model_dir, cache_dir])
 
         # Free GPU memory
         free_gpu_memory()
