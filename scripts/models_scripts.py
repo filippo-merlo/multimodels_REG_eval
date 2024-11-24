@@ -317,7 +317,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             x1, y1, x2, y2 = normalize_box_cogvlm(convert_box(bbox))
             
             question = f"What is the object in this part of the image [{x1}, {y1}, {x2}, {y2}]? Only output the object's name if one is present. If no object is present, output 'Nothing'—no extra text."
-            prompt  = f"A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions. USER: {question} ASSISTANT:"
+            prompt  = f"USER: {question} ASSISTANT:"
 
             input_by_model = model.build_conversation_input_ids(
                 tokenizer,
@@ -340,7 +340,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             }
 
             with torch.no_grad():
-                outputs = model.generate(**inputs, **gen_kwargs)
+                outputs = model.generate(**inputs, **gen_kwargs, )
                 outputs = outputs[:, inputs['input_ids'].shape[1]:]
                 response = tokenizer.decode(outputs[0])
                 response = response.split("<|end_of_text|>")[0]
