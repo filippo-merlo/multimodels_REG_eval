@@ -2,7 +2,7 @@
 import subprocess
 from scripts.manage_gpu import free_gpu_memory
 from scripts.data import load_dataset, get_images_names_path
-from scripts.config import model_list, model_dir, cache_dir
+from scripts.config import model_list
 
 
 device = "cuda:0"  # Specify GPU device
