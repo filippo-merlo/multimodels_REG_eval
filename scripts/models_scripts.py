@@ -186,7 +186,6 @@ def load_model(model_name, device, model_dir, cache_dir):
         model.eval()
 
         def generate(model, image, bbox):
-            print('bbox:',bbox)
             x1, y1 = convert_bbox_to_point(bbox)
             print('point:',x1, y1)
             prompt=f"What is the object at point x = {int(x1)}, y = {int(y1)} of the image? Answer with the object's name only, or 'Nothing' if no object is present."
