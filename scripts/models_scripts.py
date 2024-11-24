@@ -367,7 +367,10 @@ def load_model(model_name, device, model_dir, cache_dir):
         def generate(model, image, bbox):
             # Define a chat history and use `apply_chat_template` to get correctly formatted prompt
             # Each value in "content" has to be a list of dicts with types ("text", "image") 
-            x1, y1, x2, y2 = convert_box(normalize_box_N(bbox))
+            W = image.size[0]
+            H = image.size[1]
+            normalized_bbox = normalize_box(convert_box(bbox), W, H)
+            x1, y1, x2, y2 = normalized_bbox
             conversation = [
                 {
 
