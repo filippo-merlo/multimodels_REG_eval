@@ -1,6 +1,6 @@
 import os
 import json
-from config import data_dir_path, dataset_path, images_path
+from config import *
 
 def load_dataset():
     # Load and preprocess data
