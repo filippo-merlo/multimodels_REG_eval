@@ -385,6 +385,7 @@ def load_model(model_name, device, model_dir, cache_dir):
 
             output = model.generate(**inputs, max_new_tokens=100, do_sample=False)
             output_text = processor.decode(output[0][2:], skip_special_tokens=True)
+            print(output_text)
             return output_text
 
         return model, generate
