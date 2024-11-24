@@ -1,7 +1,7 @@
 # run_all_evaluations.py
 import subprocess
 from scripts.manage_gpu import free_gpu_memory
-from data import load_dataset, get_images_names_path
+from scripts.data import load_dataset, get_images_names_path
 from scripts.config import model_list, model_dir, cache_dir
 
 
