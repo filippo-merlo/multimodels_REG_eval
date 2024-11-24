@@ -158,6 +158,11 @@ if __name__ == "__main__":
     # python evaluate.py --model_name 'THUDM/cogvlm2-llama3-chat-19B-int4' --device cuda #4.45.0
     # python evaluate.py --model_name "llava-hf/llava-onevision-qwen2-0.5b-si-hf" --device cuda 
 
+
+    # Load data
+    data = load_dataset()
+    images_n_p = get_images_names_path()
+
     # Evaluate
     metrics = evaluate(args.model_name, data, images_n_p, args.device)
     '''
