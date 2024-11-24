@@ -160,8 +160,8 @@ if __name__ == "__main__":
 
 
     # Load data
-    data = load_dataset()
-    images_n_p = get_images_names_path()
+    data = load_dataset(dataset_path)
+    images_n_p = get_images_names_path(images_path)
 
     # Evaluate
     metrics = evaluate(args.model_name, data, images_n_p, args.device)

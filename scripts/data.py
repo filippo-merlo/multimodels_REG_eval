@@ -1,13 +1,12 @@
 import os
 import json
-from config import *
 
-def load_dataset():
+def load_dataset(dataset_path):
     # Load and preprocess data
     with open(dataset_path, 'r') as f:
         return json.load(f)
 
-def get_images_names_path():
+def get_images_names_path(images_path):
     # Load and preprocess images
     images_n_p = {}
     for filename in os.listdir(images_path):
