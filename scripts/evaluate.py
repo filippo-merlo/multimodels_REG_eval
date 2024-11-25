@@ -57,7 +57,7 @@ def evaluate(model_name, data, images_n_p, device):
             # the image
             # eventually the bounding box if the model accepts it
             
-            output = generate(model, image, bbox)[0].replace('_', ' ')
+            output = generate(model, image, bbox)
             print(output)
             print('****************')
             print('target:', target)
