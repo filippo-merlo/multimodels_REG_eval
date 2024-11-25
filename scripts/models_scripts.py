@@ -8,11 +8,9 @@ def load_model(model_name, device, model_dir, cache_dir):
     # BLIP-3
     if model_name == 'Salesforce/xgen-mm-phi3-mini-instruct-singleimg-r-v1.5':
         from transformers import AutoModelForVision2Seq, AutoTokenizer, AutoImageProcessor
-        model = AutoModelForVision2Seq.from_pretrained(model_name, trust_remote_code=True, cache_dir=model_dir)
+        model = AutoModelForVision2Seq.from_pretrained(model_name, trust_remote_code=True, device_map='auto', cache_dir=model_dir)
         tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True, use_fast=False, legacy=False, cache_dir=cache_dir)
         image_processor = AutoImageProcessor.from_pretrained(model_name, trust_remote_code=True, cache_dir=cache_dir)
-        
-        model = model.to(device)
         model.eval()
         
         tokenizer = model.update_special_tokens(tokenizer)
@@ -59,12 +57,11 @@ def load_model(model_name, device, model_dir, cache_dir):
     if model_name == 'Salesforce/xgen-mm-phi3-mini-instruct-r-v1':
         from transformers import AutoModelForVision2Seq, AutoTokenizer, AutoImageProcessor, StoppingCriteria
         # Load the model, tokenizer, and image processor
-        model = AutoModelForVision2Seq.from_pretrained(model_name, trust_remote_code=True, cache_dir=model_dir)
+        model = AutoModelForVision2Seq.from_pretrained(model_name, trust_remote_code=True, device_map='auto', cache_dir=model_dir)
         tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True, use_fast=False, legacy=False, cache_dir=cache_dir)
         image_processor = AutoImageProcessor.from_pretrained(model_name, trust_remote_code=True, cache_dir=cache_dir)
         
         # Move model to the device
-        model = model.to(device)
         model.eval()
         
         # Update special tokens for the tokenizer
