@@ -57,11 +57,11 @@ def evaluate(model_name, data, images_n_p, device):
             # the image
             # eventually the bounding box if the model accepts it
             
-            output = generate(model, image, bbox)[0]
+            output = generate(model, image, bbox)[0].replace('_', ' ').lower()
             print(output)
             print('****************')
             print('target:', target)
-            print('output:', output.replace('_', ' ').lower())
+            print('output:', output)
             print('\n')
 
             #print(ref_clip_score(str(target), str(formatted_output), image_patch))
