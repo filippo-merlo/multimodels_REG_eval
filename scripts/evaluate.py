@@ -7,6 +7,8 @@ from utils import log_metrics, add_grey_background_and_rescale_bbox, add_gaussia
 from config import *
 from transformers import CLIPModel, CLIPProcessor
 from torch.nn.functional import cosine_similarity
+from metrics.ensembeval_score import compute_ensembeval_score
+import os
 
 def evaluate(model_name, data, images_n_p, device):
     # Load the model
@@ -46,6 +48,8 @@ def evaluate(model_name, data, images_n_p, device):
             image = add_gaussian_noise_in_bbox(image, bbox, noise_level)
 
             image_patch = get_image_patch(image, bbox)
+            temporary_save_path_image_patch = os.path.join(temporary_save_dir,'image_patch.jpg')
+            image_patch.save(temporary_save_path_image_patch)
 
 
             # get the input for the model that is
@@ -61,7 +65,8 @@ def evaluate(model_name, data, images_n_p, device):
             print('output:', formatted_output)
             print('\n')
 
-            print(ref_clip_score(str(target), str(formatted_output), image_patch))
+            #print(ref_clip_score(str(target), str(formatted_output), image_patch))
+            print(compute_ensembeval_score([str(formatted_output)],[str(target)],[temporary_save_path_image_patch]))
 
             results[str(noise_level)+'_target'].append(target)
             results[str(noise_level)+'_output'].append(output)
