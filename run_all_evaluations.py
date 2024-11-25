@@ -11,7 +11,7 @@ model_list = [
     'microsoft/kosmos-2-patch14-224',
     'Qwen/Qwen2-VL-2B-Instruct-GPTQ-Int8',
     'llava-hf/llava-onevision-qwen2-0.5b-si-hf',
-    'cyan2k/molmo-7B-D-bnb-4bit',
+    'allenai/MolmoE-1B-0924',
 ]
 
 
