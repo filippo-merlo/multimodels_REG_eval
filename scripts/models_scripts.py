@@ -125,9 +125,8 @@ def load_model(model_name, device, model_dir, cache_dir):
         # Load Kosmos-2 model and processor
         from transformers import Kosmos2ForConditionalGeneration, AutoProcessor
         
-        model = Kosmos2ForConditionalGeneration.from_pretrained(model_name, trust_remote_code=True, cache_dir=model_dir)
+        model = Kosmos2ForConditionalGeneration.from_pretrained(model_name, trust_remote_code=True, device_map='auto', cache_dir=model_dir)
         processor = AutoProcessor.from_pretrained(model_name, trust_remote_code=True, cache_dir=cache_dir)
-        model = model.to(device)
         model.eval()
 
         def generate(model, image, bbox):
@@ -307,6 +306,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             trust_remote_code=True,
             low_cpu_mem_usage=True,
             cache_dir=model_dir,
+            device_map='auto',
         ).eval() # Load the model and set it to evaluation mode
 
         def generate(model, image, bbox):
@@ -357,8 +357,9 @@ def load_model(model_name, device, model_dir, cache_dir):
             model_id, 
             torch_dtype=torch.float16, 
             low_cpu_mem_usage=True, 
-            cache_dir=model_dir
-        ).to(device).eval()
+            cache_dir=model_dir,
+            device_map='auto',
+        ).eval()
 
         processor = AutoProcessor.from_pretrained(model_id, cache_dir=cache_dir)
 
