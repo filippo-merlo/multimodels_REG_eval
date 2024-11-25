@@ -209,7 +209,6 @@ def load_model(model_name, device, model_dir, cache_dir):
             # Decode generated tokens to text
             generated_tokens = output[0, inputs['input_ids'].size(1):]
             generated_text = processor.tokenizer.decode(generated_tokens, skip_special_tokens=True)
-            print(generated_text)
 
             return generated_text
 

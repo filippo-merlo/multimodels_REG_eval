@@ -58,7 +58,6 @@ def evaluate(model_name, data, images_n_p, device):
             # eventually the bounding box if the model accepts it
             
             output = generate(model, image, bbox)
-            print(output)
             print('****************')
             print('target:', target)
             print('output:', output)
