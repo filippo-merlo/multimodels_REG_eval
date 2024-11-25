@@ -59,17 +59,16 @@ def evaluate(model_name, data, images_n_p, device):
             
             output = generate(model, image, bbox)[0]
             print(output)
-            output.replace('_', ' ').lower()
             print('****************')
             print('target:', target)
-            print('output:', output)
+            print('output:', output.replace('_', ' ').lower())
             print('\n')
 
             #print(ref_clip_score(str(target), str(formatted_output), image_patch))
             #print(compute_ensembeval_score([str(output)],[str(target)],[temporary_save_path_image_patch]))
 
             results[str(noise_level)+'_target'].append(target)
-            results[str(noise_level)+'_output'].append(output)
+            results[str(noise_level)+'_output'].append(output.replace('_', ' ').lower())
 
 
     # Calculate metrics
