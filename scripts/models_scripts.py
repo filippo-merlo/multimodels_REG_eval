@@ -162,8 +162,7 @@ def load_model(model_name, device, model_dir, cache_dir):
         
         return model, generate
 
-
-    elif model_name == 'allenai/MolmoE-1B-0924':
+    elif model_name == 'cyan2k/molmo-7B-O-bnb-4bit':
         from transformers import (
             AutoModelForCausalLM,
             AutoProcessor,
