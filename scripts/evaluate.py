@@ -7,11 +7,16 @@ from utils import log_metrics, add_grey_background_and_rescale_bbox, add_gaussia
 from config import *
 from transformers import CLIPModel, CLIPProcessor
 from torch.nn.functional import cosine_similarity
-from metrics.ensembeval_score import compute_ensembeval_score
-import os
 import pandas as pd
+import sys
+import os
 
-os.environ['HF_HOME'] = cache_dir
+# Add the directory to sys.path
+directory = os.path.abspath("/home/filippo.merlo/caption_evaluation")
+sys.path.insert(0, directory)
+
+from metrics.ensembeval_score import compute_ensembeval_score
+
 
 def evaluate(model_name, data, images_n_p, device):
     # Load the model
