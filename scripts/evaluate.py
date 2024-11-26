@@ -64,7 +64,7 @@ def evaluate(model_name, data, images_n_p, device):
             #print(ref_clip_score(str(target), str(formatted_output), image_patch))
             #scores = compute_ensembeval_score(candidates, references, image_paths)
             # Where candidates is a list of captions, references is a list of lists of reference captions, image_paths is a list of strings with locations of images.
-            scores = compute_ensembeval_score([str(output)],[str(target)],[temporary_save_path_image_patch])
+            scores = compute_ensembeval_score([str(output)],[[str(target)]],[temporary_save_path_image_patch])
             print(scores)
 
             # Append the results
