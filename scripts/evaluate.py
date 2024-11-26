@@ -10,6 +10,7 @@ from torch.nn.functional import cosine_similarity
 import pandas as pd
 import sys
 import os
+import PIL as Image
 
 ## Add the directory to sys.path
 #directory = os.path.abspath("/home/filippo.merlo/caption_evaluation")
@@ -53,8 +54,11 @@ def evaluate(model_name, data, images_n_p, device):
             image = add_gaussian_noise_in_bbox(image, bbox, noise_level)
 
             image_patch = get_image_patch(image, bbox)
-            temporary_save_path_image_patch = os.path.join(temporary_save_dir,'image_patch.jpg')
-            image_patch.save(temporary_save_path_image_patch)
+            temporary_save_path_image_patch = os.path.join(temporary_save_dir,f'image_patch_{image_name}')
+            if noise_level == 0.0:
+                image_patch.save(temporary_save_path_image_patch)
+            # load pathc
+            image_patch = Image.open(temporary_save_path_image_patch)
 
 
             # get the input for the model that is
