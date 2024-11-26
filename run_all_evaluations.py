@@ -15,7 +15,7 @@ model_list = [
 ]
 
 
-device = "cuda:0"  # Specify GPU device
+device = "cuda"  # Specify GPU device
 
 for model_name in model_list:
     print(f"Evaluating {model_name}...")
