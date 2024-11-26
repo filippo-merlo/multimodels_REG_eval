@@ -24,7 +24,7 @@ def evaluate(model_name, data, images_n_p, device):
         '0.5_target': [],
         '0.5_output': [],
         '1.0_target': [],
-        '1.0_output': []
+        '1.0_output': [],
     }
 
     for noise_level in noise_levels:
