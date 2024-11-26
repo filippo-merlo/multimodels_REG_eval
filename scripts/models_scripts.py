@@ -387,7 +387,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             output = model.generate(**inputs, max_new_tokens=100, do_sample=False)
             output_text = processor.decode(output[0][2:], skip_special_tokens=True)
 
-            return output_text.replace(f"What is the object in this part of the image [{x1}, {y1}, {x2}, {y2}]? Answer with the object's name only. If no object is present, output 'nothing'—no extra text.assistant",'').replace('\n','')
+            return output_text.replace(f"What is the object in this part of the image [{x1}, {y1}, {x2}, {y2}]? Answer with the object's name only. If no object is present, output 'nothing'—no extra text.assistant",'').replace('\n ','')
 
         return model, generate
     else:
