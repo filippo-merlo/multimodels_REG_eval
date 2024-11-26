@@ -81,7 +81,9 @@ def evaluate(model_name, data, images_n_p, device):
                 'noise_level': noise_level,
                 'target': target,
                 'output': output,
-                'scores': scores
+                'scores': scores,
+                'scene': data[image_name]['scene']
+
             })
     results_df = pd.DataFrame(evaluation_results)
 
@@ -178,7 +180,7 @@ if __name__ == "__main__":
 
     # Evaluate
     results_df = evaluate(args.model_name, data, images_n_p, args.device)
-    results_df.to_csv(f"{output_dir}/{args.model_name.replace('//', '_')}_results.csv")
+    results_df.to_csv(f"{output_dir}/{args.model_name.replace('/', '_')}_results.csv")
 
 
     '''
