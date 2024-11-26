@@ -11,7 +11,7 @@ model_list = [
     'llava-hf/llava-onevision-qwen2-0.5b-si-hf',
     'Salesforce/xgen-mm-phi3-mini-instruct-singleimg-r-v1.5',
     'Salesforce/xgen-mm-phi3-mini-instruct-r-v1',
-     'cyan2k/molmo-7B-O-bnb-4bit',
+    #'cyan2k/molmo-7B-O-bnb-4bit',
 ]
 
 
