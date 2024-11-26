@@ -60,7 +60,6 @@ def evaluate(model_name, data, images_n_p, device):
             # load pathc
             image_patch = Image.open(temporary_save_path_image_patch)
 
-
             # get the input for the model that is
             # prompt with the right notation for indicating the target area
             # the image
