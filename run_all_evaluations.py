@@ -9,9 +9,9 @@ model_list = [
     'microsoft/kosmos-2-patch14-224',
     'Qwen/Qwen2-VL-2B-Instruct-GPTQ-Int8',
     'llava-hf/llava-onevision-qwen2-0.5b-si-hf',
-    'cyan2k/molmo-7B-O-bnb-4bit',
     'Salesforce/xgen-mm-phi3-mini-instruct-singleimg-r-v1.5',
     'Salesforce/xgen-mm-phi3-mini-instruct-r-v1',
+     'cyan2k/molmo-7B-O-bnb-4bit',
 ]
 
 
