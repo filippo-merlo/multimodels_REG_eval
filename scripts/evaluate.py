@@ -10,7 +10,7 @@ from torch.nn.functional import cosine_similarity
 import pandas as pd
 import sys
 import os
-import PIL as Image
+from PIL import Image
 
 ## Add the directory to sys.path
 #directory = os.path.abspath("/home/filippo.merlo/caption_evaluation")
