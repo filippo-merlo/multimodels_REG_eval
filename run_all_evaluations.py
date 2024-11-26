@@ -20,15 +20,11 @@ device = "cuda"  # Specify GPU device
 for model_name in model_list:
     print(f"Evaluating {model_name}...")
     # Load data
+    subprocess.run(["python", "scripts/evaluate.py", 
+                    "--model_name", model_name, 
+                    "--device", device],
+                    check=True)
 
-    # Run evaluation as a subprocess to manage memory usage
-    for model_name in model_list:
-        subprocess.run(["python", "scripts/evaluate.py", 
-                        "--model_name", model_name, 
-                        "--device", device],
-                       check=True)
-
-        # Free GPU memory
-        free_gpu_memory()
-        
-        print(f"Completed evaluation for {model_name}")
+    # Free GPU memory
+    free_gpu_memory()
+    print(f"Completed evaluation for {model_name}")
