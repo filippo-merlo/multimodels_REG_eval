@@ -10,6 +10,8 @@ from torch.nn.functional import cosine_similarity
 from metrics.ensembeval_score import compute_ensembeval_score
 import os
 
+os.environ['HF_HOME'] = cache_dir
+
 def evaluate(model_name, data, images_n_p, device):
     # Load the model
     model, generate = load_model(model_name, device, model_dir, cache_dir)
