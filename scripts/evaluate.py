@@ -182,9 +182,3 @@ if __name__ == "__main__":
     results_df = evaluate(args.model_name, data, images_n_p, args.device)
     results_df.to_csv(f"{output_dir}/{args.model_name.replace('/', '_')}_results.csv")
 
-
-    '''
-    # Save results
-    with open(f'outputs/results/{args.model_name}_metrics.json', 'w') as f:
-        json.dump(metrics, f)
-    '''
