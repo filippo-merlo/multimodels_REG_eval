@@ -16,7 +16,7 @@ directory = os.path.abspath("/home/filippo.merlo/caption_evaluation")
 sys.path.insert(0, directory)
 
 from metrics.ensembeval_score import compute_ensembeval_score
-with open('ensemble_weights.json', 'r') as fp:
+with open('/home/filippo.merlo/caption_evaluation/ensemble_weights.json', 'r') as fp:
     weights = json.load(fp)
 
 
