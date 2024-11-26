@@ -280,7 +280,7 @@ def load_model(model_name, device, model_dir, cache_dir):
                 generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
             )
 
-            return output_text
+            return output_text[0]
 
         return model, generate
     
