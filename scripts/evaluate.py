@@ -66,7 +66,7 @@ def evaluate(model_name, data, images_n_p, device):
             print('\n')
 
             #print(ref_clip_score(str(target), str(formatted_output), image_patch))
-            #print(compute_ensembeval_score([str(output)],[str(target)],[temporary_save_path_image_patch]))
+            print(compute_ensembeval_score([str(output)],[str(target)],[temporary_save_path_image_patch]))
 
             results[str(noise_level)+'_target'].append(target)
             results[str(noise_level)+'_output'].append(output.replace('_', ' '))
