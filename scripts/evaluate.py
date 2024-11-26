@@ -9,26 +9,22 @@ from transformers import CLIPModel, CLIPProcessor
 from torch.nn.functional import cosine_similarity
 from metrics.ensembeval_score import compute_ensembeval_score
 import os
+import pandas as pd
 
 os.environ['HF_HOME'] = cache_dir
 
 def evaluate(model_name, data, images_n_p, device):
     # Load the model
     model, generate = load_model(model_name, device, model_dir, cache_dir)
+
+    # Initialize a list to collect evaluation results
+    evaluation_results = []
     
     # Run evaluation
     noise_levels = [0.0, 0.5, 1.0]
-    results = {
-        '0.0_target': [],
-        '0.0_output': [],
-        '0.5_target': [],
-        '0.5_output': [],
-        '1.0_target': [],
-        '1.0_output': [],
-    }
 
     for noise_level in noise_levels:
-        for image_name, image_path in list(images_n_p.items())[:2]:
+        for image_name, image_path in list(images_n_p.items())[:100]:
             print(image_name)
             # Exclude images that has been filtered out by the LLAVA filter
             if data[image_name]['excluded']:
@@ -66,21 +62,23 @@ def evaluate(model_name, data, images_n_p, device):
             print('\n')
 
             #print(ref_clip_score(str(target), str(formatted_output), image_patch))
-            #scores = compute_ensembeval_scorecandidates, references, image_paths, weights=your_weights)
+            #scores = compute_ensembeval_score(candidates, references, image_paths)
+            # Where candidates is a list of captions, references is a list of lists of reference captions, image_paths is a list of strings with locations of images.
             scores = compute_ensembeval_score([str(output)],[str(target)],[temporary_save_path_image_patch])
             print(scores)
 
-            results[str(noise_level)+'_target'].append(target)
-            results[str(noise_level)+'_output'].append(output.replace('_', ' '))
+            # Append the results
+            evaluation_results.append({
+                'model_name': model_name,
+                'image_name': image_name,
+                'noise_level': noise_level,
+                'target': target,
+                'output': output,
+                'scores': scores
+            })
+    results_df = pd.DataFrame(evaluation_results)
 
-
-    # Calculate metrics
-    #metrics = calculate_metrics(results, data)
-    metrics = None
-    
-    # Log results
-    #log_metrics(model_name, metrics)
-    return metrics
+    return results_df
 
 
 # Load CLIP model and tokenizer
@@ -172,7 +170,9 @@ if __name__ == "__main__":
     images_n_p = get_images_names_path(images_path)
 
     # Evaluate
-    metrics = evaluate(args.model_name, data, images_n_p, args.device)
+    results_df = evaluate(args.model_name, data, images_n_p, args.device)
+    results_df.to_csv(f'{output_dir}/{args.model_name}_results.csv')
+
     '''
     # Save results
     with open(f'outputs/results/{args.model_name}_metrics.json', 'w') as f:

@@ -282,8 +282,8 @@ def load_model(model_name, device, model_dir, cache_dir):
                 generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
             )
 
-            return output_text[0]
-
+            return output_text[0].replace(f"What is the object in this part of the image [{x1}, {y1}, {x2}, {y2}]? Answer with the object's name only. If no object is present, output 'nothing'—no extra text.assistant",'')
+ 
         return model, generate
     
     elif model_name == "THUDM/cogvlm2-llama3-chat-19B-int4":
@@ -386,8 +386,8 @@ def load_model(model_name, device, model_dir, cache_dir):
 
             output = model.generate(**inputs, max_new_tokens=100, do_sample=False)
             output_text = processor.decode(output[0][2:], skip_special_tokens=True)
-            print(output_text)
-            return output_text
+
+            return output_text.replace(f"What is the object in this part of the image [{x1}, {y1}, {x2}, {y2}]? Answer with the object's name only. If no object is present, output 'nothing'—no extra text.assistant",'')
 
         return model, generate
     else:

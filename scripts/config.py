@@ -11,5 +11,6 @@ images_path = os.path.join(data_dir_path, 'resized_images')
 
 model_dir = '/mnt/cimec-storage6/shared/hf_lvlms'
 cache_dir = '/mnt/cimec-storage6/users/filippo.merlo/cache_regScene_eval'
+output_dir = '/mnt/cimec-storage6/users/filippo.merlo/sceneREG_data/output'
 
 temporary_save_dir = '/mnt/cimec-storage6/users/filippo.merlo/sceneREG_data/temporary_save'
