@@ -100,60 +100,58 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 model_name = "openai/clip-vit-base-patch32"
 clip_model = CLIPModel.from_pretrained(model_name).to(device)
 clip_processor = CLIPProcessor.from_pretrained(model_name)
-
 def compute_image_embedding(image):
     inputs = clip_processor(
-        text=[""],
+        text=[""],  # Placeholder for image-only processing
         images=image,
         return_tensors="pt",
         padding=True
     ).to(clip_model.device)
-   
+    
     with torch.no_grad():
         image_embeds = clip_model.get_image_features(inputs["pixel_values"])
-    image_embeds = image_embeds / image_embeds.norm(dim=1, keepdim=True)
-    return image_embeds
-   
+    return image_embeds / image_embeds.norm(dim=1, keepdim=True)
+
+
 def compute_text_embedding(text):
-    """Compute text embeddings for a text using CLIP."""
     inputs = clip_processor(
-        text=[text],
-        images=None,
+        text=[text] if isinstance(text, str) else text,
         return_tensors="pt",
         padding=True
     ).to(clip_model.device)
+    
     with torch.no_grad():
         text_embeds = clip_model.get_text_features(inputs["input_ids"], inputs["attention_mask"])
-    text_embeds = text_embeds / text_embeds.norm(dim=1, keepdim=True)
-    return text_embeds
+    return text_embeds / text_embeds.norm(dim=1, keepdim=True)
 
-def ref_clip_score(target, generated_text, image):
+
+def ref_clip_score(reference_caption, candidate_captions, image):
     """
-    Compute RefCLIPScore for a candidate text given references and a visual embedding.
+    Compute RefCLIPScore for a candidate text given a reference and a visual embedding.
     
     Args:
-    - candidate (str): The candidate caption.
-    - references (list of str): The list of reference captions.
-    - visual_embedding (torch.Tensor): The CLIP image embedding (1D vector).
-    
+    - reference_caption (str): The reference caption.
+    - candidate_captions (list of str or str): The generated caption(s) to evaluate.
+    - image (PIL.Image or equivalent): The input image.
+
     Returns:
     - score (float): The RefCLIPScore value.
     """
-
-    # Compute candidate and reference embeddings
-    target_embedding = compute_text_embedding(target).squeeze(0)
-    reference_embeddings = compute_text_embedding(generated_text)
+    # Compute embeddings
+    target_embedding = compute_text_embedding(reference_caption).squeeze(0)
+    if isinstance(candidate_captions, list):
+        reference_embeddings = torch.cat([compute_text_embedding(text) for text in candidate_captions], dim=0)
+    else:
+        reference_embeddings = compute_text_embedding(candidate_captions)
     image_embedding = compute_image_embedding(image)
 
-    # Compute CLIP-S (cosine similarity between candidate and image embedding)
+    # Compute CLIP-S and max reference similarity
     clip_s = (target_embedding @ image_embedding.T).squeeze()
-
-    # Compute max reference similarity (cosine similarity between candidate and references)
     ref_sims = (target_embedding @ reference_embeddings.T).squeeze()
 
     max_ref_sim = torch.max(ref_sims).item()
 
-    # Compute harmonic mean of CLIP-S and max reference similarity
+    # Harmonic mean calculation
     if clip_s + max_ref_sim > 0:
         ref_clip_s = 2 * clip_s * max_ref_sim / (clip_s + max_ref_sim)
     else:
