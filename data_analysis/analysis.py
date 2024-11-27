@@ -21,4 +21,4 @@ for file in csv_files:
 combined_df = pd.concat(dataframes, ignore_index=True)
 
 # Display the combined DataFrame
-combined_df
+combined_df.
