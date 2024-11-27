@@ -84,7 +84,7 @@ def evaluate(model_name, data, images_n_p, device):
                 'noise_level': noise_level,
                 'target': target,
                 'output': output,
-                'scores': scores,
+                'scores': scores.item(),
                 'scene': data[image_name]['scene']
 
             })
