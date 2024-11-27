@@ -86,8 +86,8 @@ def evaluate(model_name, data, images_n_p, device):
                 'output': output,
                 'scores': scores.item(),
                 'scene': data[image_name]['scene'],
-                'rel_score': data[image_name]['rel_score']
-
+                'rel_score': data[image_name]['rel_score'],
+                'rel_level': data[image_name]['rel_level']
             })
     results_df = pd.DataFrame(evaluation_results)
 
