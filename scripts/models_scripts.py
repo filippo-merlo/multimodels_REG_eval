@@ -186,18 +186,6 @@ def load_model(model_name, device, model_dir, cache_dir):
             x1, y1 = convert_bbox_to_point(bbox)
             print('point:',x1, y1)
             
-            # Draw the point on the image
-            draw = ImageDraw.Draw(image)
-            point_radius = 5
-            draw.ellipse([(x1 - point_radius, y1 - point_radius),
-                        (x1 + point_radius, y1 + point_radius)], fill="red", outline="red")
-            # Save the output image
-            # generate random number
-            import random
-            random_n = random.randint(0, 100000)
-            image.save('/mnt/cimec-storage6/users/filippo.merlo/sceneREG_data/to_delete_save/'+f'{random_n}.jpg')
-            
-            
             prompt=f"What is the object at point x = {int(x1)}, y = {int(y1)} of the image? Answer with the object's name only, or 'Nothing' if no object is present."
 
             # Process image from URL and text prompt
