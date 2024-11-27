@@ -14,7 +14,6 @@ model_list = [
     'llava-hf/llava-onevision-qwen2-0.5b-si-hf',
 ]
 
-
 device = "cuda"  # Specify GPU device
 
 for model_name in model_list:
