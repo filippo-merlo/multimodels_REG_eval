@@ -92,7 +92,9 @@ def evaluate(model_name, data, images_n_p, device):
             # Where candidates is a list of captions, references is a list of lists of reference captions, image_paths is a list of strings with locations of images.
             #scores = compute_ensembeval_score([str(output)],[[str(target)]],[temporary_save_path_image_patch], weights=weights)
             print(ref_clip_score_.item())
+            print(text_similarity_score)
             print(long_caption_ref_clip_score.item())
+            print(long_caption_text_similarity_score)
 
             # Append the results
             evaluation_results.append({
@@ -104,9 +106,9 @@ def evaluate(model_name, data, images_n_p, device):
                 'output': output,
                 'long_output': long_output,
                 'scores': ref_clip_score_.item(),
-                'text_similarity_scores': text_similarity_score.item(),
+                'text_similarity_scores': text_similarity_score,
                 'long_caption_scores': long_caption_ref_clip_score.item(),
-                'long_caption_text_similarity_scores': long_caption_text_similarity_score.item(),
+                'long_caption_text_similarity_scores': long_caption_text_similarity_score,
                 'scene': data[image_name]['scene'],
                 'rel_score': data[image_name]['rel_score'],
                 'rel_level': data[image_name]['rel_level']
