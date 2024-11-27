@@ -184,7 +184,7 @@ def load_model(model_name, device, model_dir, cache_dir):
 
         def generate(model, image, bbox):
             W, H = image.size
-            x1, y1 = convert_bbox_to_point(normalize_box(bbox, W, H))
+            x1, y1 = convert_bbox_to_point(normalize_box_N(bbox, W, H, 100))
             print('point:',x1, y1)
             
             prompt=f"What is the object at point x = {int(x1)}, y = {int(y1)} of the image? Answer with the object's name only, or 'Nothing' if no object is present."
