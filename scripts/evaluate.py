@@ -71,11 +71,27 @@ def evaluate(model_name, data, images_n_p, device):
             print('output:', output)
             print('\n')
 
-            scores = ref_clip_score(str(target), str(output), image_patch)
+            if target[0] in ['a', 'e', 'i', 'o', 'u']:
+                prefix = 'The picture of an '
+                long_target = prefix + target
+            else:
+                prefix = 'The picture of a '
+                long_target = prefix + target
+            if output[0] in ['a', 'e', 'i', 'o', 'u']:
+                prefix = 'The picture of an '
+                long_output = prefix + output
+            else:
+                prefix = 'The picture of a '
+                long_output = prefix + output
+            
+            
+            score = ref_clip_score(str(target), str(output), image_patch)
+            long_caption_score = ref_clip_score(long_target, long_output, image_patch)
             #scores = compute_ensembeval_score(candidates, references, image_paths)
             # Where candidates is a list of captions, references is a list of lists of reference captions, image_paths is a list of strings with locations of images.
             #scores = compute_ensembeval_score([str(output)],[[str(target)]],[temporary_save_path_image_patch], weights=weights)
-            print(scores.item())
+            print(score.item())
+            print(long_caption_score.item())
 
             # Append the results
             evaluation_results.append({
@@ -83,8 +99,11 @@ def evaluate(model_name, data, images_n_p, device):
                 'image_name': image_name,
                 'noise_level': noise_level,
                 'target': target,
+                'long_target': long_target,
                 'output': output,
-                'scores': scores.item(),
+                'long_output': long_output,
+                'scores': score.item(),
+                'long_caption_scores': long_caption_score.item(),
                 'scene': data[image_name]['scene'],
                 'rel_score': data[image_name]['rel_score'],
                 'rel_level': data[image_name]['rel_level']

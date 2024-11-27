@@ -95,8 +95,44 @@ print(scores_per_noise)
 # Group by model_name and noise_level, then calculate the mean score
 # Remove rows where target is "nothing"
 filtered_df = df[df['target'] != "nothing"]
-scores_per_model_noise = filtered_df.groupby(['model_name', 'noise_level'])['scores'].mean()
+scores_per_model_noise = filtered_df.groupby(['model_name', 'noise_level'])['scores'].median()
 
 # Print the results
 print("Average Scores per Model per Noise Level:")
 print(scores_per_model_noise)
+
+#%%
+filter = 0.45
+# Filter rows where the score is greater than filter
+filtered_scores = filtered_df[filtered_df['scores'] > filter]
+
+# Group by model_name and noise_level and count the occurrences
+frequency_per_model_noise = filtered_scores.groupby(['model_name', 'noise_level']).size()
+
+# Print the frequency results
+print(f"Frequency of models with score > {filter} per noise level:")
+print(frequency_per_model_noise)
+
+#%%
+# Filter rows where the score is greater than 0.4
+filtered_scores = filtered_df[filtered_df['scores'] > 0.45]
+
+# Group by model_name, image_id, and noise_level, and count occurrences of scores > 0.4
+image_score_counts_per_model = filtered_scores.groupby(['model_name', 'image_name', 'noise_level']).size().unstack(fill_value=0)
+
+# Now, check if an image has a score > 0.4 for all three noise levels for each model
+# This will return True if the image has a score > 0.4 for all three noise levels, False otherwise
+appears_above_0_4_all_levels = (image_score_counts_per_model >= 1).sum(axis=1) == 3
+
+# Group by model_name and count the number of images where the score is > 0.4 for all three levels
+images_above_0_4_three_times = appears_above_0_4_all_levels.groupby('model_name').sum()
+
+# Group by model_name and count the number of images where the score is not above 0.4 for all three levels
+images_not_above_0_4_three_times = appears_above_0_4_all_levels.groupby('model_name').apply(lambda x: len(x) - x.sum())
+
+# Print the results
+print("Images with score > 0.4 for all three noise levels per model:")
+print(images_above_0_4_three_times)
+
+print("Images with score not > 0.4 for all three noise levels per model:")
+print(images_not_above_0_4_three_times)
