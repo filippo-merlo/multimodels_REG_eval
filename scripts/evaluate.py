@@ -33,7 +33,7 @@ def evaluate(model_name, data, images_n_p, device):
 
     for noise_level in noise_levels:
         for image_name, image_path in list(images_n_p.items()):
-            print(image_name)
+
             # Exclude images that has been filtered out by the LLAVA filter
             if data[image_name]['excluded']:
                 continue
@@ -66,10 +66,6 @@ def evaluate(model_name, data, images_n_p, device):
             # eventually the bounding box if the model accepts it
             
             output = generate(model, image, bbox).lower()
-            print('****************')
-            print('target:', target)
-            print('output:', output)
-            print('\n')
 
             # format output
             output = output.lstrip()
@@ -102,10 +98,18 @@ def evaluate(model_name, data, images_n_p, device):
             #scores = compute_ensembeval_score(candidates, references, image_paths)
             # Where candidates is a list of captions, references is a list of lists of reference captions, image_paths is a list of strings with locations of images.
             #scores = compute_ensembeval_score([str(output)],[[str(target)]],[temporary_save_path_image_patch], weights=weights)
-            print(ref_clip_score)
-            print(text_similarity_score)
-            print(long_caption_ref_clip_score)
-            print(long_caption_text_similarity_score)
+            print('****************')
+            print(image_name)
+            print('target:', target)
+            print('long_target:', long_target)
+            print('output:', output)
+            print('long_output:', long_output)
+            print('\n')
+            print('ref_clip_score:',ref_clip_score)
+            print('text_similarity_score:',text_similarity_score)
+            print('long_caption_ref_clip_score:',long_caption_ref_clip_score)
+            print('long_caption_text_similarity_score:',long_caption_text_similarity_score)
+            print('\n')
 
             # Append the results
             evaluation_results.append({
