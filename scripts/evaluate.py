@@ -86,7 +86,7 @@ def evaluate(model_name, data, images_n_p, device):
             
             
             ref_clip_score_, text_similarity_score = ref_clip_score(str(output),str(target),image_patch)
-            long_caption_ref_clip_score, long_caption_text_similarity_score = ref_clip_score(long_target, long_output, image_patch)
+            long_caption_ref_clip_score, long_caption_text_similarity_score = ref_clip_score(long_output,long_target,image_patch)
 
             #scores = compute_ensembeval_score(candidates, references, image_paths)
             # Where candidates is a list of captions, references is a list of lists of reference captions, image_paths is a list of strings with locations of images.
