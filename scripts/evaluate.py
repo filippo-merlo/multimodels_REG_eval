@@ -71,22 +71,33 @@ def evaluate(model_name, data, images_n_p, device):
             print('output:', output)
             print('\n')
 
+            # format output
+            output = output.lstrip()
+            # Remove "a " or "an " if the string starts with either
+            if output.lower().startswith("a "):
+                output = output[2:]
+            elif output.lower().startswith("an "):
+                output = output[3:]
+
+            common_prefix = 'A photo depicts '
+
             if target[0] in ['a', 'e', 'i', 'o', 'u']:
-                prefix = 'The picture of an '
-                long_target = prefix + target
+                complete_prefix = common_prefix + 'an '
+                long_target = complete_prefix + target
             else:
-                prefix = 'The picture of a '
-                long_target = prefix + target
+                complete_prefix = common_prefix + 'a '
+                long_target = complete_prefix + target
+
             if output[0] in ['a', 'e', 'i', 'o', 'u']:
-                prefix = 'The picture of an '
-                long_output = prefix + output
+                complete_prefix = common_prefix + 'an '
+                long_output = complete_prefix + output
             else:
-                prefix = 'The picture of a '
-                long_output = prefix + output
+                complete_prefix = common_prefix + 'a '
+                long_output = complete_prefix + output
             
             
-            ref_clip_score_, text_similarity_score = ref_clip_score(str(output),str(target),image_patch)
-            long_caption_ref_clip_score, long_caption_text_similarity_score = ref_clip_score(long_output,long_target,image_patch)
+            ref_clip_score_, text_similarity_score = compute_metrics(output,target,image_patch)
+            long_caption_ref_clip_score, long_caption_text_similarity_score = compute_metrics(long_output,long_target,image_patch)
 
             #scores = compute_ensembeval_score(candidates, references, image_paths)
             # Where candidates is a list of captions, references is a list of lists of reference captions, image_paths is a list of strings with locations of images.
@@ -124,6 +135,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 model_name = "openai/clip-vit-base-patch32"
 clip_model = CLIPModel.from_pretrained(model_name).to(device)
 clip_processor = CLIPProcessor.from_pretrained(model_name)
+
 def compute_image_embedding(image):
     inputs = clip_processor(
         text=[""],  # Placeholder for image-only processing
@@ -149,41 +161,68 @@ def compute_text_embedding(text):
     return text_embeds / text_embeds.norm(dim=1, keepdim=True)
 
 
-def ref_clip_score(reference_caption, candidate_captions, image):
+def clip_score(c_embedding: torch.Tensor, v_embedding: torch.Tensor, w: float = 2.5) -> float:
     """
-    Compute RefCLIPScore for a candidate text given a reference and a visual embedding.
+    Compute the CLIP-Score for a given candidate caption and image using PyTorch.
     
     Args:
-    - reference_caption (str): The reference caption.
-    - candidate_captions (list of str or str): The generated caption(s) to evaluate.
-    - image (PIL.Image or equivalent): The input image.
-
+        c_embedding (torch.Tensor): CLIP embedding of the candidate caption (1D tensor).
+        v_embedding (torch.Tensor): CLIP embedding of the image (1D tensor).
+        w (float): Weight scaling factor (default is 2.5).
+        
     Returns:
-    - score (float): The RefCLIPScore value.
+        float: The CLIP-Score.
     """
+    # Compute cosine similarity
+    cos_similarity = torch.nn.functional.cosine_similarity(c_embedding, v_embedding, dim=0)
+    # Apply rescaling and max(0, cos_similarity)
+    return w * max(cos_similarity.item(), 0)
+
+def refclip_score(
+    c_embedding: torch.Tensor,
+    r_embeddings: list[torch.Tensor],
+    v_embedding: torch.Tensor,
+    w: float = 2.5
+) -> float:
+    """
+    Compute the RefCLIPScore for a given candidate caption, image, and reference captions using PyTorch.
+    
+    Args:
+        c_embedding (torch.Tensor): CLIP embedding of the candidate caption (1D tensor).
+        r_embeddings (List[torch.Tensor]): List of CLIP embeddings of reference captions (1D tensors).
+        v_embedding (torch.Tensor): CLIP embedding of the image (1D tensor).
+        w (float): Weight scaling factor (default is 2.5).
+        
+    Returns:
+        float: The RefCLIPScore.
+    """
+    # Compute CLIP-S(c, v)
+    clip_s = clip_score(c_embedding, v_embedding, w=w)
+    
+    # Compute max cosine similarity between candidate and references
+    max_ref_similarity = max(
+        torch.nn.functional.cosine_similarity(c_embedding, r, dim=0).item()
+        for r in r_embeddings
+    )
+    
+    # Compute harmonic mean
+    if clip_s > 0 and max_ref_similarity > 0:
+        return 2 * clip_s * max_ref_similarity / (clip_s + max_ref_similarity)
+    else:
+        return 0.0
+    
+def compute_metrics(output, target, image_patch):
     # Compute embeddings
-    target_embedding = compute_text_embedding(reference_caption).squeeze(0)
-    if isinstance(candidate_captions, list):
-        reference_embeddings = torch.cat([compute_text_embedding(text) for text in candidate_captions], dim=0)
-    else:
-        reference_embeddings = compute_text_embedding(candidate_captions)
-    image_embedding = compute_image_embedding(image)
-
-    # Compute CLIP-S and max reference similarity
-    clip_s = (target_embedding @ image_embedding.T).squeeze()
-    ref_sims = (target_embedding @ reference_embeddings.T).squeeze()
-
-
-
-    max_ref_sim = torch.max(ref_sims).item()
-
-    # Harmonic mean calculation
-    if clip_s + max_ref_sim > 0:
-        ref_clip_s = 2 * clip_s * max_ref_sim / (clip_s + max_ref_sim)
-    else:
-        ref_clip_s = 0.0
-
-    return ref_clip_s, max_ref_sim
+    output_embedding = compute_text_embedding(output)
+    target_embedding = compute_text_embedding(target)
+    image_embedding = compute_image_embedding(image_patch)
+    
+    # Compute scores
+    ref_clip_score_ = refclip_score(output_embedding, [target_embedding], image_embedding)
+    text_similarity_score = torch.nn.functional.cosine_similarity(output_embedding, target_embedding, dim=0).item()
+    
+    return ref_clip_score_, text_similarity_score
+    
 
 
 if __name__ == "__main__":
