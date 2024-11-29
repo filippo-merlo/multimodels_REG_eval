@@ -85,7 +85,7 @@ def evaluate(model_name, data, images_n_p, device):
                 long_output = prefix + output
             
             
-            ref_clip_score_, text_similarity_score = ref_clip_score(str(target), str(output), image_patch)
+            ref_clip_score_, text_similarity_score = ref_clip_score(str(output),str(target),image_patch)
             long_caption_ref_clip_score, long_caption_text_similarity_score = ref_clip_score(long_target, long_output, image_patch)
 
             #scores = compute_ensembeval_score(candidates, references, image_paths)
