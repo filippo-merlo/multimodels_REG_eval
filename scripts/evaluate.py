@@ -43,7 +43,7 @@ def evaluate(model_name, data, images_n_p, device):
             if '_original.jpg' in image_name:
                 target = data[image_name]['target'].replace('_', ' ')
             elif '_clean.jpg' in image_name:
-                target = 'nothing'
+                continue # skip clean images
             else:
                 target = data[image_name]['swapped_object'].replace('_', ' ')
 

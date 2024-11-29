@@ -24,6 +24,8 @@ df = combined_df.copy()
 df = df[df['target'] != "nothing"]
 
 #%%
+df.sample(100)
+#%%
 
 df.info()
 df.describe()
