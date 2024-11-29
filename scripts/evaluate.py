@@ -174,7 +174,7 @@ def clip_score(c_embedding: torch.Tensor, v_embedding: torch.Tensor, w: float = 
         float: The CLIP-Score.
     """
     # Compute cosine similarity
-    cos_similarity = torch.nn.functional.cosine_similarity(c_embedding, v_embedding, dim=0)
+    cos_similarity = torch.nn.functional.cosine_similarity(c_embedding, v_embedding, dim=1)
     # Apply rescaling and max(0, cos_similarity)
     return w * max(cos_similarity.item(), 0)
 
