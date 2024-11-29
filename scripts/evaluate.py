@@ -201,7 +201,7 @@ def refclip_score(
     
     # Compute max cosine similarity between candidate and references
     max_ref_similarity = max(
-        torch.nn.functional.cosine_similarity(c_embedding, r, dim=0).item()
+        torch.nn.functional.cosine_similarity(c_embedding, r, dim=1).item()
         for r in r_embeddings
     )
     
@@ -219,7 +219,7 @@ def compute_metrics(output, target, image_patch):
     
     # Compute scores
     ref_clip_score = refclip_score(output_embedding, [target_embedding], image_embedding)
-    text_similarity_score = torch.nn.functional.cosine_similarity(output_embedding, target_embedding, dim=0).item()
+    text_similarity_score = torch.nn.functional.cosine_similarity(output_embedding, target_embedding, dim=1).item()
     
     return ref_clip_score, text_similarity_score
     
