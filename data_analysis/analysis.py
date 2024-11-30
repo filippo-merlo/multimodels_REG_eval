@@ -3,7 +3,7 @@ import os
 import pandas as pd
 
 # Specify the folder containing your CSV files
-folder_path = '../outputs'
+folder_path = '/Users/filippomerlo/Desktop/outputs'
 
 # Get a list of all CSV files in the folder
 csv_files = [file for file in os.listdir(folder_path) if file.endswith('.csv')]
