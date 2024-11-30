@@ -22,14 +22,13 @@ for file in csv_files:
 combined_df = pd.concat(dataframes, ignore_index=True)
 df = combined_df.copy()
 df = df[df['target'] != "nothing"]
+df['rel_level'] = df['rel_level'].fillna('original')
 
-#%%
+#%% Insoect
 df.sample(100)
-#%%
-
 df.info()
 df.describe()
-
+df.head(10)
 
 #%%
 # Group by model and noise level, then compute the mean of each score
@@ -114,19 +113,87 @@ for score in scores:
     plt.show()
 
 
-#%% STATISTICAL ANALYSIS
+#%% Accuracy
 
-# effect of noyse level
-from scipy.stats import f_oneway
+# Assuming the DataFrame is named `df`
+df['rel_level'] = df['rel_level'].fillna('Unknown')  # Handle NaN rel_levels
 
-# effect of rel level
-print('Effect of rel level\n')
-# Perform ANOVA for each score across rel_levels for a specific model
-for model in df_rel['model_name'].unique():
-    print(f"Model: {model}")
-    model_data = df_rel[df_rel['model_name'] == model]
-    for score in scores:
-        groups = [group[score].values for _, group in model_data.groupby('rel_level')]
-        f_stat, p_value = f_oneway(*groups)
-        print(f"{score}: F-statistic={f_stat:.4f}, p-value={p_value:.4e}")
-    print("\n")
+# Grouping and calculations
+grouped = df.groupby(['model_name', 'rel_level', 'noise_level'])
+
+# Count total entries in each group
+total_count = grouped.size().reset_index(name='total_count')
+
+# Count "perfect" scores
+perfect_count = df[df['text_similarity_scores'] > 0.98].groupby(['model_name', 'rel_level', 'noise_level']).size().reset_index(name='perfect_count')
+
+# Count "soft" scores
+soft_count = df[df['text_similarity_scores'] > 0.9].groupby(['model_name', 'rel_level', 'noise_level']).size().reset_index(name='soft_count')
+
+# Merge counts
+accuracy = total_count.merge(perfect_count, on=['model_name', 'rel_level', 'noise_level'], how='left') \
+                      .merge(soft_count, on=['model_name', 'rel_level', 'noise_level'], how='left')
+
+# Fill NaN values with 0 (in case some groups have no "perfect" or "soft" scores)
+accuracy.fillna(0, inplace=True)
+
+# Calculate accuracy percentages
+accuracy['perfect_accuracy'] = accuracy['perfect_count'] / accuracy['total_count']
+accuracy['soft_accuracy'] = accuracy['soft_count'] / accuracy['total_count']
+
+# Display the result
+accuracy
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Convert `noise_level` to a categorical variable for better plotting
+accuracy['noise_level'] = accuracy['noise_level'].astype(str)
+
+# Melt the DataFrame for easier plotting
+accuracy_melted = accuracy.melt(
+    id_vars=['model_name', 'rel_level', 'noise_level'],
+    value_vars=['perfect_accuracy', 'soft_accuracy'],
+    var_name='Accuracy Type',
+    value_name='Accuracy'
+)
+
+# Plot
+plt.figure(figsize=(15, 8))
+sns.lineplot(
+    data=accuracy,
+    x='noise_level',
+    y='perfect_accuracy',
+    hue='model_name',
+    style='rel_level',
+    markers=True,
+    dashes=False,
+    palette='tab10'
+)
+plt.title('Perfect Accuracy by Noise Level', fontsize=16)
+plt.xlabel('Noise Level', fontsize=14)
+plt.ylabel('Perfect Accuracy', fontsize=14)
+plt.legend(title='Model and Rel Level', bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=10)
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+# Plot
+plt.figure(figsize=(15, 8))
+sns.lineplot(
+    data=accuracy,
+    x='noise_level',
+    y='soft_accuracy',
+    hue='model_name',
+    style='rel_level',
+    markers=True,
+    dashes=False,
+    palette='tab10'
+)
+plt.title('Soft Accuracy by Noise Level', fontsize=16)
+plt.xlabel('Noise Level', fontsize=14)
+plt.ylabel('Perfect Accuracy', fontsize=14)
+plt.legend(title='Model and Rel Level', bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=10)
+plt.grid(True)
+plt.tight_layout()
+plt.show()

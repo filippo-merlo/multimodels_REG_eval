@@ -80,6 +80,44 @@ def add_gaussian_noise_in_bbox(image, bbox, noise_level=0.0):
     
     return noisy_image
 
+def add_gaussian_noise_outside_bbox(image, bbox, noise_level=0.0):
+    """
+    Adds Gaussian noise to an image only outside the specified bounding box.
+    
+    Parameters:
+        image (PIL.Image.Image): Input image.
+        bbox (tuple): Bounding box in the format (x, y, w, h).
+        noise_level (float): The standard deviation of the Gaussian noise as a fraction of the intensity range (0-1).
+        
+    Returns:
+        PIL.Image.Image: Image with Gaussian noise applied outside the bounding box.
+    """
+    # Convert the image to a numpy array
+    image_np = np.array(image)
+    
+    # Extract the bounding box coordinates
+    x, y, w, h = map(int, bbox)
+    x_end = min(x + w, image_np.shape[1])
+    y_end = min(y + h, image_np.shape[0])
+
+    # Create a mask for the bounding box region
+    mask = np.zeros_like(image_np, dtype=bool)
+    mask[y:y_end, x:x_end] = True
+    
+    # Generate Gaussian noise
+    noise = np.random.normal(loc=0, scale=255 * noise_level, size=image_np.shape)
+    
+    # Apply noise only where the mask is False (outside the bbox)
+    noisy_image_np = np.where(mask, image_np, image_np + noise)
+    
+    # Clip pixel values to ensure they are valid
+    noisy_image_np = np.clip(noisy_image_np, 0, 255).astype(np.uint8)
+    
+    # Convert the numpy array back to a PIL Image
+    noisy_image = Image.fromarray(noisy_image_np)
+    
+    return noisy_image
+
  # Normalize box diamentions
 def normalize_box(bbox, image_width=1025, image_height=1025):
     return (
