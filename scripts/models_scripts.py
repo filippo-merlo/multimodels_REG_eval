@@ -256,7 +256,7 @@ def load_model(model_name, device, model_dir, cache_dir):
                         },
                         {
                             "type": "text",
-                            "text": f"What is the object in this part of the image <|box_start|>({x1},{y1}),({x2},{y2})<|box_end|>? Answer with the object's name only. No extra text."
+                            "text": f"What is the object in <|object_ref_start|>this part of the image<|object_ref_end|><|box_start|>({x1},{y1}),({x2},{y2})<|box_end|>? Answer with the object's name only. No extra text."
                         },
                     ],
                 }
@@ -266,7 +266,9 @@ def load_model(model_name, device, model_dir, cache_dir):
             text = processor.apply_chat_template(
                 messages, tokenize=False, add_generation_prompt=True
             )
+            print(text)
             image_inputs, video_inputs = process_vision_info(messages)
+
             inputs = processor(
                 text=[text],
                 images=image_inputs,
