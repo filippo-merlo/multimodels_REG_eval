@@ -238,11 +238,11 @@ if __name__ == "__main__":
 
     # python evaluate.py --model_name Salesforce/xgen-mm-phi3-mini-instruct-singleimg-r-v1.5 --device cuda
     # python evaluate.py --model_name Salesforce/xgen-mm-phi3-mini-instruct-r-v1 --device cuda
-    # python evaluate.py --model_name 'microsoft/kosmos-2-patch14-224' --device cuda
     # python evaluate.py --model_name 'cyan2k/molmo-7B-O-bnb-4bit' --device cuda
     # python evaluate.py --model_name 'Qwen/Qwen2-VL-2B-Instruct-GPTQ-Int8' --device cuda 
     # python evaluate.py --model_name 'THUDM/cogvlm2-llama3-chat-19B-int4' --device cuda #4.45.0
     # python evaluate.py --model_name "llava-hf/llava-onevision-qwen2-0.5b-si-hf" --device cuda 
+    # python evaluate.py --model_name 'microsoft/kosmos-2-patch14-224' --device cuda
 
 
     # Load data
