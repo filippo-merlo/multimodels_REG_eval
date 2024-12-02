@@ -248,7 +248,10 @@ def load_model(model_name, device, model_dir, cache_dir):
         # processor = AutoProcessor.from_pretrained("Qwen/Qwen2-VL-7B-Instruct-GPTQ-Int4", min_pixels=min_pixels, max_pixels=max_pixels)
 
         def generate(model, image, bbox):
-            x1, y1, x2, y2 = map(lambda x: round(x, 1), convert_box(normalize_box_N(bbox)))
+            x1, y1, x2, y2 = map(lambda x: round(x, 1), convert_box(normalize_box_N(bbox))) 
+
+            path = "temp_image.jpg"
+            image.save(path)
             
             messages = [
                 {
@@ -256,7 +259,7 @@ def load_model(model_name, device, model_dir, cache_dir):
                     "content": [
                         {
                             "type": "image",
-                            "image": image,
+                            "image": path,
                         },
                         {
                             "type": "text",
