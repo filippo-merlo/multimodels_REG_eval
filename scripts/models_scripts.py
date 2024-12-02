@@ -138,8 +138,8 @@ def load_model(model_name, device, model_dir, cache_dir):
 
             # Preprocess the image and prompt
             inputs = processor(images = [image], text = [prompt],  bboxes = [[normalized_bbox]] , return_tensors="pt")
-            print(inputs)
-            
+            test_decode = processor.decode(inputs['input_ids'][0])
+            print(test_decode)
             # Move inputs to device
             inputs = {k: v.to(device) for k, v in inputs.items()}
 

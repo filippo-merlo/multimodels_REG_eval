@@ -3,7 +3,7 @@ import os
 import pandas as pd
 
 # Specify the folder containing your CSV files
-folder_path = '/Users/filippomerlo/Desktop/outputs'
+folder_path = '/Users/filippomerlo/Desktop/output'
 
 # Get a list of all CSV files in the folder
 csv_files = [file for file in os.listdir(folder_path) if file.endswith('.csv')]
@@ -196,4 +196,39 @@ plt.ylabel('Perfect Accuracy', fontsize=14)
 plt.legend(title='Model and Rel Level', bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=10)
 plt.grid(True)
 plt.tight_layout()
+plt.show()
+
+
+#%%
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# Step 1: Create a binary match column
+df['is_match'] = (df['target'].str.replace(' ', '', regex=True).str.lower() == 
+                  df['output'].str.replace(' ', '', regex=True).str.lower())
+
+# Step 2: Group by model_name, noise_level, and rel_level
+grouped = df.groupby(['model_name', 'noise_level', 'rel_level'])['is_match'].mean().reset_index()
+
+# Step 3: Rename for clarity
+grouped.rename(columns={'is_match': 'accuracy'}, inplace=True)
+
+# Step 4: Visualize results
+# Example visualization using a heatmap
+pivot_table = grouped.pivot_table(index='noise_level', columns='rel_level', values='accuracy', aggfunc='mean')
+
+plt.figure(figsize=(12, 8))
+sns.heatmap(pivot_table, annot=True, cmap='viridis', fmt=".2f")
+plt.title("Accuracy by Noise Level and Rel Level")
+plt.xlabel("Rel Level")
+plt.ylabel("Noise Level")
+plt.show()
+
+# For a bar plot grouped by model_name:
+plt.figure(figsize=(12, 8))
+sns.barplot(data=grouped, x='model_name', y='accuracy', hue='rel_level')
+plt.title("Accuracy by Model Name and Rel Level")
+plt.ylabel("Accuracy")
+plt.xticks(rotation=45)
 plt.show()
