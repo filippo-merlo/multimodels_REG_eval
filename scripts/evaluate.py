@@ -73,10 +73,10 @@ def evaluate(model_name, data, images_n_p, device):
                 # the image
                 # eventually the bounding box if the model accepts it
                 
-                output, decoded_input = generate(model, image, bbox).lower()
+                raw_output, decoded_input = generate(model, image, bbox)
 
                 # format output
-                output = output.lstrip()
+                output = raw_output.lstrip().lower()
                 # Remove "a " or "an " if the string starts with either
                 if output.lower().startswith("a "):
                     output = output[2:]
@@ -128,6 +128,7 @@ def evaluate(model_name, data, images_n_p, device):
                     'target': target,
                     'long_target': long_target,
                     'input': decoded_input,
+                    'raw_output': raw_output,
                     'output': output,
                     'long_output': long_output,
                     'scores': ref_clip_score,
