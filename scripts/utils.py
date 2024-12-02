@@ -129,10 +129,10 @@ def normalize_box(bbox, image_width=1025, image_height=1025):
 
 def normalize_box_N(bbox, image_width=1025, image_height=1025, N = 1000):
     return (
-        round(float(bbox[0] / image_width), 4) * N,
-        round(float(bbox[1] / image_height), 4) * N,
-        round(float(bbox[2] / image_width), 4) * N,
-        round(float(bbox[3] / image_height), 4) * N,
+        min(int(bbox[0][0] * N / image_width), N),
+        min(int(bbox[0][1] * N / image_height), N),
+        min(int(bbox[1][0] * N / image_width), N),
+        min(int(bbox[1][1] * N / image_height), N),
     )
 
 
