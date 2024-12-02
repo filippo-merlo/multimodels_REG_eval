@@ -399,7 +399,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             inputs = processor(images=raw_image, text=prompt, return_tensors='pt').to(0, torch.float16)
             print(type(inputs))
             print(inputs)
-            decoded_input = processor.decode(processor(inputs)["input_ids"][0])
+            decoded_input = processor.decode(inputs['input_ids'][0])
             print(decoded_input)
 
             output = model.generate(**inputs, max_new_tokens=100, do_sample=False)
