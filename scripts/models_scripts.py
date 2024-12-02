@@ -132,7 +132,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             # Adapt box
             W = image.size[0]
             H = image.size[1]
-            normalized_bbox = normalize_box(convert_box(bbox), W, H)#tuple(normalize_box(convert_box(bbox), W, H))
+            normalized_bbox = tuple(normalize_box(convert_box(bbox), W, H))
 
             prompt="<grounding>What is the object in <phrase>this part</phrase> of the image? Answer with the object's name only. No extra text. Answer:"
 
