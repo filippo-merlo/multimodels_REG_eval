@@ -35,109 +35,113 @@ def evaluate(model_name, data, images_n_p, device):
     for condition in conditions:
         for noise_level in noise_levels:
             for image_name, image_path in list(images_n_p.items()):
+                try:
                 
-                # Exclude images that has been filtered out by the LLAVA filter
-                if data[image_name]['excluded']:
+                    # Exclude images that has been filtered out by the LLAVA filter
+                    if data[image_name]['excluded']:
+                        continue
+                    
+                    bbox = data[image_name]['target_bbox']
+                    
+                    if '_original.jpg' in image_name:
+                        target = data[image_name]['target'].replace('_', ' ')
+                    elif '_clean.jpg' in image_name:
+                        continue # skip clean images
+                    else:
+                        target = data[image_name]['swapped_object'].replace('_', ' ')
+
+                    # get the image with a grey background and the bounding box rescaled
+                    image, bbox = add_grey_background_and_rescale_bbox(image_path, bbox)
+                    image_patch = get_image_patch(image, bbox)
+                    temporary_save_path_image_patch = os.path.join(temporary_save_dir,f'image_patch_{image_name}')
+                    if not os.path.exists(temporary_save_path_image_patch):
+                        image_patch.save(temporary_save_path_image_patch)
+                    # load patch
+                    image_patch = Image.open(temporary_save_path_image_patch)
+
+
+                    # get the image with the corresponding noise level in the roi
+                    if condition == 'target_noise':
+                        image = add_gaussian_noise_in_bbox(image, bbox, noise_level)
+                    elif condition == 'context_noise':
+                        image = add_gaussian_noise_outside_bbox(image, bbox, noise_level)
+                    elif condition == 'all_noise':
+                        image = add_gaussian_noise_in_bbox(image, bbox, noise_level)
+                        image = add_gaussian_noise_outside_bbox(image, bbox, noise_level)
+
+                    # get the input for the model that is
+                    # prompt with the right notation for indicating the target area
+                    # the image
+                    # eventually the bounding box if the model accepts it
+                    
+                    raw_output = generate(model, image, bbox)
+
+                    # format output
+                    output = raw_output.lstrip().lower()
+                    # Remove "a " or "an " if the string starts with either
+                    if output.lower().startswith("a "):
+                        output = output[2:]
+                    elif output.lower().startswith("an "):
+                        output = output[3:]
+
+                    common_prefix = 'A photo depicts '
+
+                    if target[0] in ['a', 'e', 'i', 'o', 'u']:
+                        complete_prefix = common_prefix + 'an '
+                        long_target = complete_prefix + target
+                    else:
+                        complete_prefix = common_prefix + 'a '
+                        long_target = complete_prefix + target
+
+                    if output[0] in ['a', 'e', 'i', 'o', 'u']:
+                        complete_prefix = common_prefix + 'an '
+                        long_output = complete_prefix + output
+                    else:
+                        complete_prefix = common_prefix + 'a '
+                        long_output = complete_prefix + output
+                    
+                    
+                    ref_clip_score, text_similarity_score = compute_metrics(output,target,image_patch)
+                    long_caption_ref_clip_score, long_caption_text_similarity_score = compute_metrics(long_output,long_target,image_patch)
+
+                    #scores = compute_ensembeval_score(candidates, references, image_paths)
+                    # Where candidates is a list of captions, references is a list of lists of reference captions, image_paths is a list of strings with locations of images.
+                    #scores = compute_ensembeval_score([str(output)],[[str(target)]],[temporary_save_path_image_patch], weights=weights)
+                    print('****************')
+                    print(image_name)
+                    print('target:', target)
+                    print('long_target:', long_target)
+                    print('output:', output)
+                    print('long_output:', long_output)
+                    print('\n')
+                    print('ref_clip_score:',ref_clip_score)
+                    print('text_similarity_score:',text_similarity_score)
+                    print('long_caption_ref_clip_score:',long_caption_ref_clip_score)
+                    print('long_caption_text_similarity_score:',long_caption_text_similarity_score)
+                    print('\n')
+
+                    # Append the results
+                    evaluation_results.append({
+                        'model_name': model_name,
+                        'image_name': image_name,
+                        'noise_level': noise_level,
+                        'condition': condition,
+                        'target': target,
+                        'long_target': long_target,
+                        'raw_output': raw_output,
+                        'output': output,
+                        'long_output': long_output,
+                        'scores': ref_clip_score,
+                        'text_similarity_scores': text_similarity_score,
+                        'long_caption_scores': long_caption_ref_clip_score,
+                        'long_caption_text_similarity_scores': long_caption_text_similarity_score,
+                        'scene': data[image_name]['scene'],
+                        'rel_score': data[image_name]['rel_score'],
+                        'rel_level': data[image_name]['rel_level']
+                    })
+                except Exception as e:
+                    print(f"Error processing image {image_name}: {e}")
                     continue
-                
-                bbox = data[image_name]['target_bbox']
-                
-                if '_original.jpg' in image_name:
-                    target = data[image_name]['target'].replace('_', ' ')
-                elif '_clean.jpg' in image_name:
-                    continue # skip clean images
-                else:
-                    target = data[image_name]['swapped_object'].replace('_', ' ')
-
-                # get the image with a grey background and the bounding box rescaled
-                image, bbox = add_grey_background_and_rescale_bbox(image_path, bbox)
-                image_patch = get_image_patch(image, bbox)
-                temporary_save_path_image_patch = os.path.join(temporary_save_dir,f'image_patch_{image_name}')
-                if not os.path.exists(temporary_save_path_image_patch):
-                    image_patch.save(temporary_save_path_image_patch)
-                # load patch
-                image_patch = Image.open(temporary_save_path_image_patch)
-
-
-                # get the image with the corresponding noise level in the roi
-                if condition == 'target_noise':
-                    image = add_gaussian_noise_in_bbox(image, bbox, noise_level)
-                elif condition == 'context_noise':
-                    image = add_gaussian_noise_outside_bbox(image, bbox, noise_level)
-                elif condition == 'all_noise':
-                    image = add_gaussian_noise_in_bbox(image, bbox, noise_level)
-                    image = add_gaussian_noise_outside_bbox(image, bbox, noise_level)
-
-                # get the input for the model that is
-                # prompt with the right notation for indicating the target area
-                # the image
-                # eventually the bounding box if the model accepts it
-                
-                raw_output = generate(model, image, bbox)
-
-                # format output
-                output = raw_output.lstrip().lower()
-                # Remove "a " or "an " if the string starts with either
-                if output.lower().startswith("a "):
-                    output = output[2:]
-                elif output.lower().startswith("an "):
-                    output = output[3:]
-
-                common_prefix = 'A photo depicts '
-
-                if target[0] in ['a', 'e', 'i', 'o', 'u']:
-                    complete_prefix = common_prefix + 'an '
-                    long_target = complete_prefix + target
-                else:
-                    complete_prefix = common_prefix + 'a '
-                    long_target = complete_prefix + target
-
-                if output[0] in ['a', 'e', 'i', 'o', 'u']:
-                    complete_prefix = common_prefix + 'an '
-                    long_output = complete_prefix + output
-                else:
-                    complete_prefix = common_prefix + 'a '
-                    long_output = complete_prefix + output
-                
-                
-                ref_clip_score, text_similarity_score = compute_metrics(output,target,image_patch)
-                long_caption_ref_clip_score, long_caption_text_similarity_score = compute_metrics(long_output,long_target,image_patch)
-
-                #scores = compute_ensembeval_score(candidates, references, image_paths)
-                # Where candidates is a list of captions, references is a list of lists of reference captions, image_paths is a list of strings with locations of images.
-                #scores = compute_ensembeval_score([str(output)],[[str(target)]],[temporary_save_path_image_patch], weights=weights)
-                print('****************')
-                print(image_name)
-                print('target:', target)
-                print('long_target:', long_target)
-                print('output:', output)
-                print('long_output:', long_output)
-                print('\n')
-                print('ref_clip_score:',ref_clip_score)
-                print('text_similarity_score:',text_similarity_score)
-                print('long_caption_ref_clip_score:',long_caption_ref_clip_score)
-                print('long_caption_text_similarity_score:',long_caption_text_similarity_score)
-                print('\n')
-
-                # Append the results
-                evaluation_results.append({
-                    'model_name': model_name,
-                    'image_name': image_name,
-                    'noise_level': noise_level,
-                    'condition': condition,
-                    'target': target,
-                    'long_target': long_target,
-                    'raw_output': raw_output,
-                    'output': output,
-                    'long_output': long_output,
-                    'scores': ref_clip_score,
-                    'text_similarity_scores': text_similarity_score,
-                    'long_caption_scores': long_caption_ref_clip_score,
-                    'long_caption_text_similarity_scores': long_caption_text_similarity_score,
-                    'scene': data[image_name]['scene'],
-                    'rel_score': data[image_name]['rel_score'],
-                    'rel_level': data[image_name]['rel_level']
-                })
     
     results_df = pd.DataFrame(evaluation_results)
     return results_df
