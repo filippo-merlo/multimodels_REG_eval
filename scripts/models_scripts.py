@@ -38,8 +38,8 @@ def load_model(model_name, device, model_dir, cache_dir):
 
             language_inputs = tokenizer([prompt], return_tensors="pt")
             inputs.update(language_inputs)
-            decoded_input = tokenizer.decode(inputs['input_ids'][0])
-            print(decoded_input)
+            #decoded_input = tokenizer.decode(inputs['input_ids'][0])
+
 
             # Move tensors to CUDA
             for name, value in inputs.items():
@@ -53,8 +53,8 @@ def load_model(model_name, device, model_dir, cache_dir):
                                             do_sample=False, max_new_tokens=1024, top_p=None, num_beams=1)
             
             prediction = tokenizer.decode(generated_text[0], skip_special_tokens=True).split("<|end|>")[0]
-            return prediction, decoded_input
-
+            return prediction
+        
         return model, generate 
     
     if model_name == 'Salesforce/xgen-mm-phi3-mini-instruct-r-v1':
@@ -105,7 +105,6 @@ def load_model(model_name, device, model_dir, cache_dir):
             language_inputs = tokenizer([prompt], return_tensors="pt")
             inputs.update(language_inputs)
             decoded_input = tokenizer.decode(inputs['input_ids'][0])
-            print(decoded_input)
 
             # Move tensors to the device (GPU or CPU)
             for name, value in inputs.items():
@@ -120,7 +119,7 @@ def load_model(model_name, device, model_dir, cache_dir):
 
             # Decode and return the generated text
             prediction = tokenizer.decode(generated_text[0], skip_special_tokens=True).split("<|end|>")[0]
-            return prediction, decoded_input
+            return prediction
         
         return model, generate 
 
@@ -145,7 +144,7 @@ def load_model(model_name, device, model_dir, cache_dir):
 
             # Move inputs to device
             inputs = {k: v.to(device) for k, v in inputs.items()}
-            decoded_input = processor.decode(inputs['input_ids'][0])
+            #decoded_input = processor.decode(inputs['input_ids'][0])
 
             generated_ids = model.generate(
                 pixel_values=inputs["pixel_values"],
@@ -161,7 +160,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             generated_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
             processed_text, entities = processor.post_process_generation(generated_text)
             
-            return processed_text.replace("What is the object in this part of the image? Answer with the object's name only. No extra text. Answer: ", ""), decoded_input
+            return processed_text.replace("What is the object in this part of the image? Answer with the object's name only. No extra text. Answer: ", "")
         
         return model, generate
 
@@ -202,9 +201,8 @@ def load_model(model_name, device, model_dir, cache_dir):
 
             # Move inputs to the correct device and create a batch of size 1
             inputs = {k: v.to(model.device).unsqueeze(0) for k, v in inputs.items()}
-            decoded_input = processor.tokenizer.decode(inputs['input_ids'][0])
-            print(decoded_input)
-
+            #decoded_input = processor.tokenizer.decode(inputs['input_ids'][0])
+    
             # Generate output with configured generation settings
             with torch.autocast("cuda", enabled=True, dtype=torch.bfloat16):
                 output = model.generate_from_batch(
@@ -217,7 +215,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             generated_tokens = output[0, inputs['input_ids'].size(1):]
             generated_text = processor.tokenizer.decode(generated_tokens, skip_special_tokens=True)
 
-            return generated_text, decoded_input
+            return generated_text
 
         return model, generate
     
@@ -272,7 +270,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             text = processor.apply_chat_template(
                 messages, tokenize=False, add_generation_prompt=True
             )
-            print(text)
+
             image_inputs, video_inputs = process_vision_info(messages)
 
             inputs = processor(
@@ -284,7 +282,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             )
             inputs = inputs.to(model.device)
             decoded_input = processor.decode(inputs['input_ids'][0])
-            print(decoded_input)
+
 
             # Inference: Generation of the output
             generated_ids = model.generate(**inputs, max_new_tokens=128)
@@ -295,7 +293,7 @@ def load_model(model_name, device, model_dir, cache_dir):
                 generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
             )
 
-            return output_text[0].replace(f"What is the object in this part of the image [{x1}, {y1}, {x2}, {y2}]? Answer with the object's name only. No extra text.assistant",''), decoded_input
+            return output_text[0].replace(f"What is the object in this part of the image [{x1}, {y1}, {x2}, {y2}]? Answer with the object's name only. No extra text.assistant",'')
  
         return model, generate
     
@@ -396,13 +394,13 @@ def load_model(model_name, device, model_dir, cache_dir):
 
             raw_image = image
             inputs = processor(images=raw_image, text=prompt, return_tensors='pt').to(0, torch.float16)
-            decoded_input = processor.decode(inputs['input_ids'][0])
-            print(decoded_input)
+            #decoded_input = processor.decode(inputs['input_ids'][0])
+          
 
             output = model.generate(**inputs, max_new_tokens=100, do_sample=False)
             output_text = processor.decode(output[0][2:], skip_special_tokens=True)
 
-            return output_text.replace(f"What is the object in this part of the image [{x1}, {y1}, {x2}, {y2}]? Answer with the object's name only. No extra text.assistant\n",'').replace('\n',''), decoded_input
+            return output_text.replace(f"What is the object in this part of the image [{x1}, {y1}, {x2}, {y2}]? Answer with the object's name only. No extra text.assistant\n",'').replace('\n','')
         return model, generate
     else:
         # other models

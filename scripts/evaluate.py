@@ -73,7 +73,7 @@ def evaluate(model_name, data, images_n_p, device):
                 # the image
                 # eventually the bounding box if the model accepts it
                 
-                raw_output, decoded_input = generate(model, image, bbox)
+                raw_output = generate(model, image, bbox)
 
                 # format output
                 output = raw_output.lstrip().lower()
@@ -127,7 +127,6 @@ def evaluate(model_name, data, images_n_p, device):
                     'condition': condition,
                     'target': target,
                     'long_target': long_target,
-                    'input': decoded_input,
                     'raw_output': raw_output,
                     'output': output,
                     'long_output': long_output,
