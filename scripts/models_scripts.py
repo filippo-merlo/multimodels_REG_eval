@@ -203,6 +203,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             # Move inputs to the correct device and create a batch of size 1
             inputs = {k: v.to(model.device).unsqueeze(0) for k, v in inputs.items()}
             decoded_input = processor.tokenizer.decode(inputs['input_ids'][0])
+            print(decoded_input)
 
             # Generate output with configured generation settings
             with torch.autocast("cuda", enabled=True, dtype=torch.bfloat16):
