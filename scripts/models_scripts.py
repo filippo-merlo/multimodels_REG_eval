@@ -285,6 +285,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             )
             inputs = inputs.to(model.device)
             decoded_input = processor.decode(inputs['input_ids'][0])
+            print(decoded_input)
 
 
             # Inference: Generation of the output
