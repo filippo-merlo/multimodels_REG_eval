@@ -73,7 +73,7 @@ def evaluate(model_name, data, images_n_p, device):
                     # the image
                     # eventually the bounding box if the model accepts it
                     
-                    output = generate(model, image, bbox).lower()
+                    output, decoded_input = generate(model, image, bbox).lower()
 
                     # format output
                     output = output.lstrip()
@@ -127,6 +127,7 @@ def evaluate(model_name, data, images_n_p, device):
                         'condition': condition,
                         'target': target,
                         'long_target': long_target,
+                        'input': decoded_input,
                         'output': output,
                         'long_output': long_output,
                         'scores': ref_clip_score,
