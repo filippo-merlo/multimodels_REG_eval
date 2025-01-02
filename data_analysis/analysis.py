@@ -26,10 +26,9 @@ df['rel_level'] = df['rel_level'].fillna('original')
 
 #%% Insoect
 df.sample(100)
-df.info()
 df.describe()
 df.head(10)
-
+df.info()
 #%%
 # Group by model and noise level, then compute the mean of each score
 performance_by_noise = df.groupby(['model_name', 'noise_level'])[
@@ -205,16 +204,13 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 # Step 1: Create a binary match column
-df['is_match'] = (df['target'].str.replace(' ', '', regex=True).str.lower() == 
+df['accuracy'] = (df['target'].str.replace(' ', '', regex=True).str.lower() == 
                   df['output'].str.replace(' ', '', regex=True).str.lower())
 
 # Step 2: Group by model_name, noise_level, and rel_level
-grouped = df.groupby(['model_name', 'noise_level', 'rel_level'])['is_match'].mean().reset_index()
+grouped = df.groupby(['model_name', 'noise_level', 'rel_level'])['accuracy'].mean().reset_index()
 
-# Step 3: Rename for clarity
-grouped.rename(columns={'is_match': 'accuracy'}, inplace=True)
-
-# Step 4: Visualize results
+# Step 3: Visualize results
 # Example visualization using a heatmap
 pivot_table = grouped.pivot_table(index='noise_level', columns='rel_level', values='accuracy', aggfunc='mean')
 
@@ -231,4 +227,25 @@ sns.barplot(data=grouped, x='model_name', y='accuracy', hue='rel_level')
 plt.title("Accuracy by Model Name and Rel Level")
 plt.ylabel("Accuracy")
 plt.xticks(rotation=45)
+plt.show()
+
+
+# Plot
+plt.figure(figsize=(15, 8))
+sns.lineplot(
+    data=grouped,
+    x='noise_level',
+    y='accuracy',
+    hue='model_name',
+    style='rel_level',
+    markers=True,
+    dashes=False,
+    palette='tab10'
+)
+plt.title('Accuracy by Noise Level', fontsize=16)
+plt.xlabel('Noise Level', fontsize=14)
+plt.ylabel('Accuracy', fontsize=14)
+plt.legend(title='Model and Rel Level', bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=10)
+plt.grid(True)
+plt.tight_layout()
 plt.show()
