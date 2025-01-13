@@ -354,7 +354,7 @@ results_list = []
 
 for condition in conditions:
   for noise_level in noise_levels:
-    for image_name, image_path  in tqdm(list(images_n_p.items())[0:4]):
+    for image_name, image_path  in tqdm(list(images_n_p.items())):
       if data[image_name]['excluded']:
         continue
 
@@ -571,7 +571,7 @@ for condition in conditions:
   
           ratio = normalized_attetion_density_t/normalized_attetion_density_c
   
-          print('ratio:',ratio)
+          #print('ratio:',ratio)
   
           # Append the results as a dictionary to the list
           results_list.append({
