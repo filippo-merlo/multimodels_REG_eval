@@ -354,6 +354,11 @@ results_list = []
 
 for condition in conditions:
   for noise_level in noise_levels:
+    if conditions == 'context_noise' and noise_level == 0.0:
+      continue
+    elif conditions == 'all_noise' and noise_level == 0.0:
+      continue
+
     for image_name, image_path  in tqdm(list(images_n_p.items())):
       if data[image_name]['excluded']:
         continue
