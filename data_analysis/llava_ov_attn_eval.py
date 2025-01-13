@@ -304,8 +304,8 @@ def show_mask_on_image(img, mask):
 # ===> specify the model path
 pretrained = "lmms-lab/llava-onevision-qwen2-0.5b-si"
 model_name = "llava_qwen"
-device = "cuda"
-device_map = "auto"
+device = "cuda:0"
+#device_map = "auto"
 
 # load the model
 load_8bit = False
@@ -318,7 +318,7 @@ llava_model_args = {
     "load_4bit" : load_4bit,
 }
 
-tokenizer, model, image_processor, max_length = load_pretrained_model(pretrained, None, model_name, device_map="auto", **llava_model_args)
+tokenizer, model, image_processor, max_length = load_pretrained_model(pretrained, None, model_name, **llava_model_args).to(device)
 model.eval()
 
 # Load Image And Load Data
