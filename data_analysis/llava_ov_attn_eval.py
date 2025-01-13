@@ -8,7 +8,7 @@ Original file is located at
 """
 
 # Commented out IPython magic to ensure Python compatibility.
-!pip install -U git+https://github.com/filippo-merlo/LLaVA-NeXT.git
+#!pip install -U git+https://github.com/filippo-merlo/LLaVA-NeXT.git
 
 import os
 import sys
@@ -49,8 +49,6 @@ from transformers.image_transforms import (
 )
 from transformers.image_utils import ChannelDimension, to_numpy_array, PILImageResampling
 from transformers.utils import ModelOutput
-
-
 
 # Utils for the task
 
