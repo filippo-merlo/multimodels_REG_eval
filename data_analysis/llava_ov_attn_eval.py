@@ -487,113 +487,126 @@ for condition in conditions:
 
           output_token_inds = list(range(output_token_start, output_token_end))### output_token_inds
 
+          # Loop through all tokens except the last one
           for i, token_id in enumerate(output_token_inds):
-
-              attn_weights_over_vis_tokens = llm_attn_matrix[token_id][vision_token_start:vision_token_end]### llm_attn_matrix
+              
+              # Compute attention weights for vision tokens for the current token
+              attn_weights_over_vis_tokens = llm_attn_matrix[token_id][vision_token_start:vision_token_end]
               attn_weights_over_vis_tokens = attn_weights_over_vis_tokens / attn_weights_over_vis_tokens.sum()
 
               attn_over_image = []
+              
+              # Calculate weighted attention maps over visual tokens
               for weight, vis_attn in zip(attn_weights_over_vis_tokens, vis_attn_matrix):
                   vis_attn = vis_attn.reshape(grid_size, grid_size)
-                  # vis_attn = vis_attn / vis_attn.max()
                   attn_over_image.append(vis_attn * weight)
+              
+              # Combine the attention maps for this token
               attn_over_image = torch.stack(attn_over_image).sum(dim=0)
               attn_over_image = attn_over_image / attn_over_image.max()
 
+              # Upsample to match the original image size
               attn_over_image = F.interpolate(
                   attn_over_image.unsqueeze(0).unsqueeze(0),
-                  size=image.size,
+                  size=image.size, 
                   mode='nearest',
               ).squeeze()
 
+              # Accumulate attention maps to average over tokens
+              if attn_over_image_final is None:
+                  attn_over_image_final = attn_over_image
+              else:
+                  attn_over_image_final += attn_over_image
 
-              # METRICS
+          # Compute the average over all tokens except the last one
+          attn_over_image_final /= len(output_token_inds)
 
-              attn_over_image = attn_over_image.to(torch.float64)
+          # METRICS
 
-              x_min, y_min, w, h = bbox ### bbox
+          attn_over_image = attn_over_image_final.to(torch.float64)
 
-              target_area = w * h
-              original_image_w = original_image_size[0] ### original_image_size
-              original_image_h = original_image_size[1]
-              grey_board_lenght = int((original_image_w - original_image_h)/2)
-              tot_area = original_image_w * original_image_h
+          x_min, y_min, w, h = bbox ### bbox
 
-              context_area = tot_area - target_area
+          target_area = w * h
+          original_image_w = original_image_size[0] ### original_image_size
+          original_image_h = original_image_size[1]
+          grey_board_lenght = int((original_image_w - original_image_h)/2)
+          tot_area = original_image_w * original_image_h
 
-              x_max = x_min + w
-              y_max = y_min + h
-
-              attn_over_target = attn_over_image[y_min:y_max, x_min:x_max]
-              attn_over_target = attn_over_target.sum().item()
-
-              # Create a mask for the entire image (1 for context, 0 for target)
-              mask = torch.ones_like(attn_over_image)
-              mask[0:grey_board_lenght, :] = 0 # Upper board
-              mask[original_image_w-grey_board_lenght:, :] = 0 # Lower board
-              mask[y_min:y_max, x_min:x_max] = 0  # Set target area to 0
-
-              # Compute attention over the context area
-              attn_over_context = attn_over_image * mask
-              attn_over_context = attn_over_context.sum().item()
-
-              tot_attn = attn_over_target + attn_over_context
-
-              # fist method
-              attention_density_t = attn_over_target/target_area
-              attention_density_c  = attn_over_context/context_area
-              # second method
-              #attention_density_t = attn_over_target/(target_area*attn_over_image.max())
-              #attention_density_c  = attn_over_context/(context_area*attn_over_image.max())
-
-              attention_density_tot = tot_attn/tot_area
-
-              normalized_attetion_density_t = attention_density_t/attention_density_tot
-              normalized_attetion_density_c = attention_density_c/attention_density_tot
-
-              ratio = normalized_attetion_density_t/normalized_attetion_density_c
-
-              print('ratio:',ratio)
-
-              # Append the results as a dictionary to the list
-              results_list.append({
-                  "image_name": image_name,
-                  "condition": condition,
-                  "noise_level": noise_level,
-                  "target": target,
-                  "bbox": bbox,
-                  "output_text": text,
-                  "grid_size": model.get_vision_tower().num_patches_per_side,
-                  "image_size": image.size,
-                  "original_image_size": original_image_size,
-                  'scene': data[image_name]['scene'],
-                  'rel_score': data[image_name]['rel_score'],
-                  'rel_level': data[image_name]['rel_level'],
-                  'target_area': target_area,
-                  'tot_area': tot_area,
-                  'context_area': context_area,
-                  'x_min': x_min,
-                  'y_min': y_min,
-                  'w': w,
-                  'h': h,
-                  'x_max': x_max,
-                  'y_max': y_max,
-                  'attn_over_target': attn_over_target,
-                  'attn_over_context': attn_over_context,
-                  'tot_attn': tot_attn,
-                  'attention_density_t': attention_density_t,
-                  'attention_density_c': attention_density_c,
-                  'attention_density_tot': attention_density_tot,
-                  'normalized_attetion_density_t': normalized_attetion_density_t,
-                  'normalized_attetion_density_c': normalized_attetion_density_c,
-                  'ratio': ratio
-              })
-
-
-
-              del attn_over_image
-              del mask
-              del attn_weights_over_vis_tokens
+          context_area = tot_area - target_area
+  
+          x_max = x_min + w
+          y_max = y_min + h
+  
+          attn_over_target = attn_over_image[y_min:y_max, x_min:x_max]
+          attn_over_target = attn_over_target.sum().item()
+  
+          # Create a mask for the entire image (1 for context, 0 for target)
+          mask = torch.ones_like(attn_over_image)
+          mask[0:grey_board_lenght, :] = 0 # Upper board
+          mask[original_image_w-grey_board_lenght:, :] = 0 # Lower board
+          mask[y_min:y_max, x_min:x_max] = 0  # Set target area to 0
+  
+          # Compute attention over the context area
+          attn_over_context = attn_over_image * mask
+          attn_over_context = attn_over_context.sum().item()
+  
+          tot_attn = attn_over_target + attn_over_context
+  
+          # fist method
+          attention_density_t = attn_over_target/target_area
+          attention_density_c  = attn_over_context/context_area
+          # second method
+          #attention_density_t = attn_over_target/(target_area*attn_over_image.max())
+          #attention_density_c  = attn_over_context/(context_area*attn_over_image.max())
+  
+          attention_density_tot = tot_attn/tot_area
+  
+          normalized_attetion_density_t = attention_density_t/attention_density_tot
+          normalized_attetion_density_c = attention_density_c/attention_density_tot
+  
+          ratio = normalized_attetion_density_t/normalized_attetion_density_c
+  
+          print('ratio:',ratio)
+  
+          # Append the results as a dictionary to the list
+          results_list.append({
+              "image_name": image_name,
+              "condition": condition,
+              "noise_level": noise_level,
+              "target": target,
+              "bbox": bbox,
+              "output_text": text,
+              "grid_size": model.get_vision_tower().num_patches_per_side,
+              "image_size": image.size,
+              "original_image_size": original_image_size,
+              'scene': data[image_name]['scene'],
+              'rel_score': data[image_name]['rel_score'],
+              'rel_level': data[image_name]['rel_level'],
+              'target_area': target_area,
+              'tot_area': tot_area,
+              'context_area': context_area,
+              'x_min': x_min,
+              'y_min': y_min,
+              'w': w,
+              'h': h,
+              'x_max': x_max,
+              'y_max': y_max,
+              'attn_over_target': attn_over_target,
+              'attn_over_context': attn_over_context,
+              'tot_attn': tot_attn,
+              'attention_density_t': attention_density_t,
+              'attention_density_c': attention_density_c,
+              'attention_density_tot': attention_density_tot,
+              'normalized_attetion_density_t': normalized_attetion_density_t,
+              'normalized_attetion_density_c': normalized_attetion_density_c,
+              'ratio': ratio
+          })
+  
+          del attn_over_image
+          del attn_over_image_final
+          del mask
+          del attn_weights_over_vis_tokens
 
           # Cleanup after each layer
           del vis_attn_matrix
