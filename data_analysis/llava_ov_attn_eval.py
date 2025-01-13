@@ -8,8 +8,6 @@ Original file is located at
 """
 
 # Commented out IPython magic to ensure Python compatibility.
-from google.colab import drive
-drive.mount('/content/drive/')
 !pip install -U git+https://github.com/filippo-merlo/LLaVA-NeXT.git
 
 import os
@@ -51,8 +49,6 @@ from transformers.image_transforms import (
 )
 from transformers.image_utils import ChannelDimension, to_numpy_array, PILImageResampling
 from transformers.utils import ModelOutput
-
-
 
 
 
@@ -341,11 +337,10 @@ def get_images_names_path(images_path):
             images_n_p[filename] = os.path.join(images_path, filename)
     return images_n_p
 
-images_path = "/content/drive/MyDrive/evaluation_data/resized_images"
-dataset_path = "/content/drive/MyDrive/evaluation_data/final_dataset_resized.json"
-
+images_path = "/mnt/cimec-storage6/users/filippo.merlo/sceneREG_data/resized_images"
+dataset_path = "/mnt/cimec-storage6/users/filippo.merlo/sceneREG_data/final_dataset_resized.json"
 # Specify the directory
-output_dir = "/content/drive/MyDrive/evaluation_data/"
+output_dir = "/mnt/cimec-storage6/users/filippo.merlo/sceneREG_data/attention_deployment"
 os.makedirs(output_dir, exist_ok=True)
 
 
