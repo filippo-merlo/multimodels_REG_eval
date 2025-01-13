@@ -319,7 +319,7 @@ llava_model_args = {
     "load_4bit" : load_4bit,
 }
 
-tokenizer, model, image_processor, max_length = load_pretrained_model(pretrained, None, model_name, **llava_model_args, cache_dir=cache_dir, device=device)
+tokenizer, model, image_processor, max_length = load_pretrained_model(pretrained, None, model_name, **llava_model_args, cache_dir=cache_dir, device_map = device)
 #model.to(device)
 model.eval()
 
