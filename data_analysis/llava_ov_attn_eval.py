@@ -541,8 +541,13 @@ for condition in conditions:
   
           x_max = x_min + w
           y_max = y_min + h
+
+          y_min = int(y_min)
+          y_max = int(y_max)
+          x_min = int(x_min)
+          x_max = int(x_max)
   
-          attn_over_target = attn_over_image[int(y_min):int(y_max), int(x_min):int(x_max)]
+          attn_over_target = attn_over_image[y_min:y_max, x_min:x_max]
           attn_over_target = attn_over_target.sum().item()
   
           # Create a mask for the entire image (1 for context, 0 for target)
