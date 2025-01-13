@@ -306,7 +306,7 @@ pretrained = "lmms-lab/llava-onevision-qwen2-0.5b-si"
 model_name = "llava_qwen"
 device = "cuda:1"
 cache_dir = '/mnt/cimec-storage6/shared/hf_lvlms'
-#device_map = "auto"
+device_map = "auto"
 
 # load the model
 load_8bit = False
@@ -319,7 +319,7 @@ llava_model_args = {
     "load_4bit" : load_4bit,
 }
 
-tokenizer, model, image_processor, max_length = load_pretrained_model(pretrained, None, model_name, **llava_model_args, cache_dir=cache_dir, device_map = device)
+tokenizer, model, image_processor, max_length = load_pretrained_model(pretrained, None, model_name, **llava_model_args, cache_dir=cache_dir, device_map = device_map)
 #model.to(device)
 model.eval()
 
