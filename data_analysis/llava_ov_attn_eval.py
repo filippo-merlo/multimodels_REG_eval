@@ -304,6 +304,7 @@ def show_mask_on_image(img, mask):
 # ===> specify the model path
 pretrained = "lmms-lab/llava-onevision-qwen2-0.5b-si"
 model_name = "llava_qwen"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 device = "cuda:1"
 cache_dir = '/mnt/cimec-storage6/shared/hf_lvlms'
 device_map = {"": "cuda:1"}#"auto"
