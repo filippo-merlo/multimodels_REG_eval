@@ -609,7 +609,7 @@ for condition in conditions:
 results_df = pd.DataFrame(results_list)
 
 # Define the file path
-output_file = os.path.join(output_dir, "evaluation_results.csv")
+output_file = os.path.join(output_dir, "results.csv")
 
 # Save the DataFrame to a CSV file
 results_df.to_csv(output_file, index=False)
