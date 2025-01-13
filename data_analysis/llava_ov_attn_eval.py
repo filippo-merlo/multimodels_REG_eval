@@ -485,8 +485,11 @@ for condition in conditions:
 
           grid_size = model.get_vision_tower().num_patches_per_side ### grid_size
 
-          output_token_inds = list(range(output_token_start, output_token_end))### output_token_inds
+          # Define the range of output tokens, excluding the last one
+          output_token_inds = list(range(output_token_start, output_token_end - 1))
 
+          attn_over_image_final = None
+          
           # Loop through all tokens except the last one
           for i, token_id in enumerate(output_token_inds):
               
