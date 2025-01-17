@@ -485,7 +485,7 @@ for condition in conditions:
 
         del model.get_vision_tower().image_attentions
 
-        vis_attn_matrix_per_layers = ()
+        vis_attn_matrix_per_layers = []
 
         for layer in list(range(0,26)):
 
@@ -505,7 +505,7 @@ for condition in conditions:
             del vis_attn_matrix_per_layers
             print('ok')
         else:
-            two_tensors = torch.stack((vis_attn_matrix_average, vis_attn_matrix_per_layers))
+            two_tensors = torch.stack([vis_attn_matrix_average, vis_attn_matrix_per_layers])
             vis_attn_matrix_average = torch.mean(two_tensors)
             print(vis_attn_matrix_average.size())
             del vis_attn_matrix_per_layers
