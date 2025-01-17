@@ -499,9 +499,10 @@ for condition in conditions:
         
         del att_on_whole_image
 
+        print(vis_attn_matrix_average)
+
         if vis_attn_matrix_average == []:
             vis_attn_matrix_average = torch.stack(vis_attn_matrix_per_layers)
-            print(type(vis_attn_matrix_average))
             del vis_attn_matrix_per_layers
             print('ok')
         else:
