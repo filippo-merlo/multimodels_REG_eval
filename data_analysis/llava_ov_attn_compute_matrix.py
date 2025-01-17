@@ -350,9 +350,7 @@ noise_levels = [0.0, 0.5, 1.0]
 conditions = ['target_noise','context_noise','all_noise']
 evaluation_results = []
 
-results_list = []
-
-size_dict = dict()
+vis_attn_matrix_average = None
 
 for condition in conditions:
   for noise_level in noise_levels:
@@ -487,11 +485,36 @@ for condition in conditions:
 
         del model.get_vision_tower().image_attentions
 
+        vis_attn_matrix_per_layers = []
+
         for layer in list(range(0,26)):
 
           vis_attn_matrix = aggregate_vit_attention(
-              att_on_whole_image, ### att_on_whole_image
+              att_on_whole_image,
               select_layer=layer,
               all_prev_layers=False
           )
+          vis_attn_matrix_per_layers.append(vis_attn_matrix)
+          del vis_attn_matrix
+        
+        del att_on_whole_image
+        vis_attn_matrix_per_layers = torch.stack(vis_attn_matrix_per_layers)
+
+        if vis_attn_matrix_average is None:
+            vis_attn_matrix_average = vis_attn_matrix_per_layers
+            del vis_attn_matrix_per_layers
+        else:
+            two_tensors = torch.stack(vis_attn_matrix_average, vis_attn_matrix_per_layers)
+            del vis_attn_matrix_per_layers
+            vis_attn_matrix_average = torch.mean(two_tensors)
+            del two_tensors
+
+        gc.collect()
+        torch.cuda.empty_cache()
+
+
+        # if there is another matrix like this saved, average with the new one and then save
+
+        # save matrix to disk
+        
           
