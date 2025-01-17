@@ -352,7 +352,7 @@ evaluation_results = []
 
 results_list = []
 
-i = 0 
+min = 1000
 
 image_size_mean = 0
 for condition in conditions:
@@ -396,12 +396,11 @@ for condition in conditions:
       # Process input
       image_sizes = image.size
 
-
-      if image_sizes[0] != 640 or image_sizes[1] != 640:
-          print(image_sizes)
       
-      i += 1
-print(i)
+
+      if image_sizes[0] < min:
+          min = image_sizes[0]
+print(min)
 
 '''
       W = image.size[0]
