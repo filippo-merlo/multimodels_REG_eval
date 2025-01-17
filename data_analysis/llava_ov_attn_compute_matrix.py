@@ -352,9 +352,8 @@ evaluation_results = []
 
 results_list = []
 
-min = 1000
+minimum = 1000
 
-image_size_mean = 0
 for condition in conditions:
   for noise_level in noise_levels:
     if conditions == 'context_noise' and noise_level == 0.0:
@@ -398,9 +397,9 @@ for condition in conditions:
 
       
 
-      if image_sizes[0] < min:
-          min = image_sizes[0]
-print(min)
+      if image_sizes[0] < minimum:
+          minimum = image_sizes[0]
+print(minimum)
 
 '''
       W = image.size[0]
