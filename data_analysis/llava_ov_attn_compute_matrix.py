@@ -428,44 +428,6 @@ for condition in conditions:
         )
 
         del image_tensor
-
-        text = tokenizer.decode(outputs["sequences"][0]).strip()
-
-        # constructing the llm attention matrix
-        aggregated_prompt_attention = []
-        for i, layer in enumerate(outputs["attentions"][0]):
-            layer_attns = layer.squeeze(0)
-            del layer
-            attns_per_head = layer_attns.mean(dim=0)
-            del layer_attns
-            cur = attns_per_head[:-1].cpu().clone()
-            # following the practice in `aggregate_llm_attention`
-            # we are zeroing out the attention to the first <bos> token
-            # for the first row `cur[0]` (corresponding to the next token after <bos>), however,
-            # we don't do this because <bos> is the only token that it can attend to
-            cur[1:, 0] = 0.
-            cur[1:] = cur[1:] / cur[1:].sum(-1, keepdim=True)
-            aggregated_prompt_attention.append(cur)
-        aggregated_prompt_attention = torch.stack(aggregated_prompt_attention).mean(dim=0)
-
-        # llm_attn_matrix will be of torch.Size([N, N])
-        # where N is the total number of input (both image and text ones) + output tokens
-        llm_attn_matrix = heterogenous_stack(
-            [torch.tensor([1])]
-            + list(aggregated_prompt_attention)
-            + list(map(aggregate_llm_attention, outputs["attentions"]))
-        )
-
-        del aggregated_prompt_attention
-
-        # identify length or index of tokens
-        input_token_len = model.get_vision_tower().num_patches + len(input_ids[0]) - 1 # -1 for the <image> token
-        vision_token_start = len(tokenizer(prompt.split("<image>")[0], return_tensors='pt')["input_ids"][0])
-        vision_token_end = vision_token_start + model.get_vision_tower().num_patches
-        output_token_len = len(outputs["sequences"][0])
-        output_token_start = input_token_len
-        output_token_end = input_token_len + output_token_len
-
         del input_ids
         del outputs
 
