@@ -512,7 +512,7 @@ for condition in conditions:
         torch.cuda.empty_cache()
 
 print(vis_attn_matrix_average)
-print(vis_attn_matrix_average.shape())
+print(vis_attn_matrix_average.size())
 output_tensor_path = os.path.join(output_dir, "vis_attn_matrix_average.pt")
 torch.save(vis_attn_matrix_average, output_tensor_path)
 print(f"vis_attn_matrix_average saved at {output_tensor_path}")
