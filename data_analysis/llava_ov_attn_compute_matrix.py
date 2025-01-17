@@ -352,6 +352,7 @@ evaluation_results = []
 
 results_list = []
 
+image_size_mean = 0
 for condition in conditions:
   for noise_level in noise_levels:
     if conditions == 'context_noise' and noise_level == 0.0:
@@ -393,6 +394,13 @@ for condition in conditions:
       # Process input
       image_sizes = image.size
       print(image_sizes)
+
+      image_size_mean += image_sizes[0]
+      image_size_mean /= 2
+
+      print(image_sizes)
+
+'''
       W = image.size[0]
       H = image.size[1]
       normalized_bbox = normalize_box(convert_box(bbox), W, H)
@@ -490,3 +498,5 @@ for condition in conditions:
               select_layer=layer,
               all_prev_layers=False
           )
+
+'''
