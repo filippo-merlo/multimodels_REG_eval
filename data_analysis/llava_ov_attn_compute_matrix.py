@@ -399,7 +399,8 @@ for condition in conditions:
 
       if image_sizes[0] < minimum:
           minimum = image_sizes[0]
-print(minimum)
+    print(minimum)
+
 
 '''
       W = image.size[0]
