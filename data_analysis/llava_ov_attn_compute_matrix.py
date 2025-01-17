@@ -397,6 +397,8 @@ for condition in conditions:
       image_size_mean += image_sizes[0]
       image_size_mean /= 2
 
+      print(image_size_mean)
+
       if image_sizes[0] != image_size_mean or image_sizes[1] != image_size_mean:
           print('ops')
           break
