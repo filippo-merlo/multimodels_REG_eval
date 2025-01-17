@@ -504,7 +504,7 @@ for condition in conditions:
             vis_attn_matrix_average = vis_attn_matrix_per_layers
             del vis_attn_matrix_per_layers
         else:
-            two_tensors = torch.stack(vis_attn_matrix_average, vis_attn_matrix_per_layers)
+            two_tensors = torch.stack([vis_attn_matrix_average, vis_attn_matrix_per_layers])
             del vis_attn_matrix_per_layers
             vis_attn_matrix_average = torch.mean(two_tensors)
             del two_tensors
