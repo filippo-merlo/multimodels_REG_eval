@@ -377,6 +377,9 @@ for condition in conditions:
       original_image = load_image(image_path)
       original_image_size = original_image.size
 
+      if original_image_size[0] != 640: ###!!!
+          continue
+
       # get the image with a grey background and the bounding box rescaled
       image, bbox = add_grey_background_and_rescale_bbox(image_path, bbox)
 
