@@ -352,7 +352,7 @@ evaluation_results = []
 
 results_list = []
 
-minimum = [640]
+size_dict = dict()
 
 for condition in conditions:
   for noise_level in noise_levels:
@@ -395,11 +395,13 @@ for condition in conditions:
       # Process input
       image_sizes = image.size
 
-      
-
-      if image_sizes[0] < min(minimum):
-          minimum.append(image_sizes[0])
-    print(minimum)
+      if str(image_sizes[0]) not in size_dict.keys():
+        size_dict[str(image_sizes[0])] = 1
+      else:
+        size_dict[str(image_sizes[0])] += 1
+        
+    from pprint import pprint
+    pprint(size_dict)
 
 
 '''
