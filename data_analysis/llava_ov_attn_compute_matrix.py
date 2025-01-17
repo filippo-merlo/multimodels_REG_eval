@@ -399,7 +399,6 @@ for condition in conditions:
 
       if image_sizes[0] != 640 or image_sizes[1] != 640:
           print(image_sizes)
-          break
       
       i += 1
 print(i)
