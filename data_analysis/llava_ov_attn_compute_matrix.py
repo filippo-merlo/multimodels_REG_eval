@@ -395,7 +395,10 @@ for condition in conditions:
       image_sizes = image.size
 
       image_size_mean += image_sizes[0]
-      image_size_mean /= 2
+      if image_size_mean == image_sizes[0]:
+          continue
+      else:
+        image_size_mean /= 2
 
       print(image_size_mean)
 
