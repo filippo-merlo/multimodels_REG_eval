@@ -393,12 +393,14 @@ for condition in conditions:
 
       # Process input
       image_sizes = image.size
-      print(image_sizes)
 
       image_size_mean += image_sizes[0]
       image_size_mean /= 2
 
-      print(image_sizes)
+      if image_sizes[0] != image_size_mean or image_sizes[1] != image_size_mean:
+          print('ops')
+          break
+
 
 '''
       W = image.size[0]
