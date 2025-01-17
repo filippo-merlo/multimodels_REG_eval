@@ -25,6 +25,9 @@ df = df[df['target'] != "nothing"]
 df['rel_level'] = df['rel_level'].fillna('original')
 
 #%%
+df['rel_score'][df['rel_level'] == 'original'].max()
+
+#%%
 df['model_name'].unique()
 #%%
 model_names = ['cyan2k/molmo-7B-O-bnb-4bit',
