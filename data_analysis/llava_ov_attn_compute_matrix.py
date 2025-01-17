@@ -348,7 +348,6 @@ images_n_p = get_images_names_path(images_path)
 
 noise_levels = [0.0, 0.5, 1.0]
 conditions = ['target_noise','context_noise','all_noise']
-evaluation_results = []
 
 vis_attn_matrix_average = []
 
@@ -427,10 +426,6 @@ for condition in conditions:
             output_attentions=True,
         )
 
-        del image_tensor
-        del input_ids
-        del outputs
-
         # connect with the vision encoder attention
         # to visualize the attention over the image
 
@@ -445,7 +440,7 @@ for condition in conditions:
           att_on_whole_image.append(v[0])
           del v
 
-        del model.get_vision_tower().image_attentions
+        del image_tensor, input_ids, outputs, model.get_vision_tower().image_attentions
 
         vis_attn_matrix_per_layers = []
 
@@ -463,12 +458,15 @@ for condition in conditions:
 
         if vis_attn_matrix_average == []:
             vis_attn_matrix_average = torch.stack(vis_attn_matrix_per_layers)
+            for v in vis_attn_matrix_per_layers:
+                del v
             del vis_attn_matrix_per_layers
         else:
             two_tensors = torch.stack([vis_attn_matrix_average, torch.stack(vis_attn_matrix_per_layers)])
             vis_attn_matrix_average = torch.mean(two_tensors, dim=0)
-            del vis_attn_matrix_per_layers
-            del two_tensors
+            for v in vis_attn_matrix_per_layers:
+                del v
+            del vis_attn_matrix_per_layers, two_tensors
 
         gc.collect()
         torch.cuda.empty_cache()
