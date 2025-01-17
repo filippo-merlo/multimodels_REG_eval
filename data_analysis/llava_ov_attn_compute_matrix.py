@@ -500,11 +500,11 @@ for condition in conditions:
         del att_on_whole_image
 
         if vis_attn_matrix_average is None:
-            vis_attn_matrix_average = torch.stack(vis_attn_matrix_per_layers)
+            vis_attn_matrix_average = torch.tensor(vis_attn_matrix_per_layers)
             del vis_attn_matrix_per_layers
             print('ok')
         else:
-            two_tensors = torch.stack([vis_attn_matrix_average, torch.stack(vis_attn_matrix_per_layers)])
+            two_tensors = torch.stack([vis_attn_matrix_average, torch.tensor(vis_attn_matrix_per_layers)])
             vis_attn_matrix_average = torch.mean(two_tensors)
             print(vis_attn_matrix_average.size())
             del vis_attn_matrix_per_layers
