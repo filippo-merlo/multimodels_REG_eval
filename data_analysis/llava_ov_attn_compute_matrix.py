@@ -352,7 +352,7 @@ evaluation_results = []
 
 results_list = []
 
-minimum = 1000
+minimum = [640]
 
 for condition in conditions:
   for noise_level in noise_levels:
@@ -397,8 +397,8 @@ for condition in conditions:
 
       
 
-      if image_sizes[0] < minimum:
-          minimum = image_sizes[0]
+      if image_sizes[0] < min(minimum):
+          minimum.append(image_sizes[0])
     print(minimum)
 
 
