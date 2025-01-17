@@ -352,6 +352,8 @@ evaluation_results = []
 
 results_list = []
 
+i = 0 
+
 image_size_mean = 0
 for condition in conditions:
   for noise_level in noise_levels:
@@ -398,7 +400,9 @@ for condition in conditions:
       if image_sizes[0] != 640 or image_sizes[1] != 640:
           print(image_sizes)
           break
-
+      
+      i += 1
+print(i)
 
 '''
       W = image.size[0]
