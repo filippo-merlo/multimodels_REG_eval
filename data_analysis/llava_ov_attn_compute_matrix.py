@@ -350,7 +350,7 @@ noise_levels = [0.0, 0.5, 1.0]
 conditions = ['target_noise','context_noise','all_noise']
 evaluation_results = []
 
-vis_attn_matrix_average = None
+vis_attn_matrix_average = []
 
 for condition in conditions:
   for noise_level in noise_levels:
@@ -503,6 +503,7 @@ for condition in conditions:
         if vis_attn_matrix_average is None:
             vis_attn_matrix_average = vis_attn_matrix_per_layers
             del vis_attn_matrix_per_layers
+            print('ok')
         else:
             two_tensors = torch.stack([vis_attn_matrix_average, vis_attn_matrix_per_layers])
             del vis_attn_matrix_per_layers
