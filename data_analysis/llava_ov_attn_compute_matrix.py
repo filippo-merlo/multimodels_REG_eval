@@ -499,26 +499,15 @@ for condition in conditions:
         
         del att_on_whole_image
 
-        print(vis_attn_matrix_average)
-
         if vis_attn_matrix_average == []:
             vis_attn_matrix_average = torch.stack(vis_attn_matrix_per_layers)
             del vis_attn_matrix_per_layers
-            print('ok')
         else:
             two_tensors = torch.stack([vis_attn_matrix_average, torch.stack(vis_attn_matrix_per_layers)])
-            print(two_tensors.size())
             vis_attn_matrix_average = torch.mean(two_tensors, dim=0)
-            print(vis_attn_matrix_average.size())
             del vis_attn_matrix_per_layers
             del two_tensors
 
         gc.collect()
         torch.cuda.empty_cache()
 
-
-        # if there is another matrix like this saved, average with the new one and then save
-
-        # save matrix to disk
-        
-          
