@@ -499,9 +499,7 @@ for condition in conditions:
         
         del att_on_whole_image
 
-        print(type(vis_attn_matrix_per_layers))
-
-        if vis_attn_matrix_average is None:
+        if vis_attn_matrix_average == []:
             vis_attn_matrix_average = torch.tensor(vis_attn_matrix_per_layers)
             print(type(vis_attn_matrix_average))
             del vis_attn_matrix_per_layers
