@@ -379,6 +379,9 @@ for condition in conditions:
       original_image = load_image(image_path)
       original_image_size = original_image.size
 
+      if original_image_size[0] != 640: ###!!!
+          continue
+
       # get the image with a grey background and the bounding box rescaled
       image, bbox = add_grey_background_and_rescale_bbox(image_path, bbox)
 
@@ -394,17 +397,6 @@ for condition in conditions:
 
       # Process input
       image_sizes = image.size
-
-      if str(image_sizes[0]) not in size_dict.keys():
-        size_dict[str(image_sizes[0])] = 1
-      else:
-        size_dict[str(image_sizes[0])] += 1
-        
-    from pprint import pprint
-    pprint(size_dict)
-
-
-'''
       W = image.size[0]
       H = image.size[1]
       normalized_bbox = normalize_box(convert_box(bbox), W, H)
@@ -497,10 +489,9 @@ for condition in conditions:
 
         for layer in list(range(0,26)):
 
-          vis_attn_matrix = my_aggregate_vit_attention(
+          vis_attn_matrix = aggregate_vit_attention(
               att_on_whole_image, ### att_on_whole_image
               select_layer=layer,
               all_prev_layers=False
           )
-
-'''
+          

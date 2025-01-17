@@ -481,6 +481,17 @@ for condition in conditions:
 
         del model.get_vision_tower().image_attentions
 
+
+        attn_over_target_list = []
+        attn_over_context_list = []
+        tot_attn_list = []
+        attention_density_t_list = []
+        attention_density_c_list = []
+        attention_density_tot_list = []
+        normalized_attetion_density_t_list = []
+        normalized_attetion_density_c_list = []
+        ratio_list = []
+
         for layer in list(range(0,26)):
 
           vis_attn_matrix = my_aggregate_vit_attention(
@@ -580,43 +591,17 @@ for condition in conditions:
           normalized_attetion_density_c = attention_density_c/attention_density_tot
   
           ratio = normalized_attetion_density_t/normalized_attetion_density_c
-  
-          #print('ratio:',ratio)
-  
-          # Append the results as a dictionary to the list
-          results_list.append({
-              "image_name": image_name,
-              "condition": condition,
-              "noise_level": noise_level,
-              "target": target,
-              "bbox": bbox,
-              "output_text": text,
-              "grid_size": model.get_vision_tower().num_patches_per_side,
-              "image_size": image.size,
-              "original_image_size": original_image_size,
-              'scene': data[image_name]['scene'],
-              'rel_score': data[image_name]['rel_score'],
-              'rel_level': data[image_name]['rel_level'],
-              'target_area': target_area,
-              'tot_area': tot_area,
-              'context_area': context_area,
-              'x_min': x_min,
-              'y_min': y_min,
-              'w': w,
-              'h': h,
-              'x_max': x_max,
-              'y_max': y_max,
-              'attn_over_target': attn_over_target,
-              'attn_over_context': attn_over_context,
-              'tot_attn': tot_attn,
-              'attention_density_t': attention_density_t,
-              'attention_density_c': attention_density_c,
-              'attention_density_tot': attention_density_tot,
-              'normalized_attetion_density_t': normalized_attetion_density_t,
-              'normalized_attetion_density_c': normalized_attetion_density_c,
-              'ratio': ratio
-          })
-  
+
+          attn_over_target_list.append(attn_over_target)
+          attn_over_context_list.append(attn_over_context)
+          tot_attn_list.append(tot_attn)
+          attention_density_t_list.append(attention_density_t)
+          attention_density_c_list.append(attention_density_c)
+          attention_density_tot_list.append(attention_density_tot)
+          normalized_attetion_density_t_list.append(normalized_attetion_density_t)
+          normalized_attetion_density_c_list.append(normalized_attetion_density_c)
+          ratio_list.append(ratio)
+           
           del attn_over_image
           del attn_over_image_final
           del mask
@@ -624,13 +609,47 @@ for condition in conditions:
 
           # Cleanup after each layer
           del vis_attn_matrix
+          
 
-      # Final cleanup
-      del llm_attn_matrix
-      del att_on_whole_image
-      gc.collect()
-      torch.cuda.empty_cache()
+        # Append the results as a dictionary to the list
+        results_list.append({
+            "image_name": image_name,
+            "condition": condition,
+            "noise_level": noise_level,
+            "target": target,
+            "bbox": bbox,
+            "output_text": text,
+            "grid_size": model.get_vision_tower().num_patches_per_side,
+            "image_size": image.size,
+            "original_image_size": original_image_size,
+            'scene': data[image_name]['scene'],
+            'rel_score': data[image_name]['rel_score'],
+            'rel_level': data[image_name]['rel_level'],
+            'target_area': target_area,
+            'tot_area': tot_area,
+            'context_area': context_area,
+            'x_min': x_min,
+            'y_min': y_min,
+            'w': w,
+            'h': h,
+            'x_max': x_max,
+            'y_max': y_max,
+            'attn_over_target': attn_over_target_list,
+            'attn_over_context': attn_over_context_list,
+            'tot_attn': tot_attn_list,
+            'attention_density_t': attention_density_t_list,
+            'attention_density_c': attention_density_c_list,
+            'attention_density_tot': attention_density_tot_list,
+            'normalized_attetion_density_t': normalized_attetion_density_t_list,
+            'normalized_attetion_density_c': normalized_attetion_density_c_list,
+            'ratio': ratio_list
+        })
 
+        # Final cleanup
+        del llm_attn_matrix
+        del att_on_whole_image
+        gc.collect()
+        torch.cuda.empty_cache()
 
 # Convert the list to a DataFrame
 results_df = pd.DataFrame(results_list)
