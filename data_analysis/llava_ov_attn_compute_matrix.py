@@ -167,6 +167,7 @@ def add_gaussian_noise_outside_bbox(image, bbox, noise_level=0.0):
     return noisy_image
 
  # Normalize box diamentions
+
 def normalize_box(bbox, image_width=1025, image_height=1025):
     return (
         round(float(bbox[0] / image_width), 4),
@@ -204,7 +205,12 @@ def aggregate_llm_attention(attn):
             torch.tensor([0.]),
         ))
         avged.append(vec / vec.sum())
-    return torch.stack(avged).mean(dim=0)
+        del layer_attns, attns_per_head, vec
+    
+    result = torch.stack(avged).mean(dim=0)
+    # Clean up before returning
+    del avged
+    return result
 
 
 def aggregate_vit_attention(attn, select_layer=-2, all_prev_layers=True):
@@ -219,61 +225,21 @@ def aggregate_vit_attention(attn, select_layer=-2, all_prev_layers=True):
             #vec = attns_per_head[1:, 1:].cpu() # the first token is <CLS>
             vec = attns_per_head[0:, 0:].cpu()
             avged.append(vec / vec.sum(-1, keepdim=True))
-        return torch.stack(avged).mean(dim=0)
+
+            del layer_attns, attns_per_head, vec
+        result = torch.stack(avged).mean(dim=0)
+        del avged
+        return result
     else:
         layer = attn[select_layer]
         layer_attns = layer.squeeze(0)
         attns_per_head = layer_attns.mean(dim=0)
         #vec = attns_per_head[1:, 1:].cpu() # the first token is <CLS>
         vec = attns_per_head[0:, 0:].cpu()
-        return vec / vec.sum(-1, keepdim=True)
+        result = vec / vec.sum(-1, keepdim=True)
 
-def my_aggregate_vit_attention(attn, select_layer=-2, all_prev_layers=True):
-    """
-    Highlights layer-specific attention by subtracting the average attention across all layers
-    and ensures the results are non-negative (only positive values or 0).
-    Parameters:
-        attn: List of attention maps, one per layer. Each map is of shape (batch_size, num_heads, num_tokens, num_tokens).
-        select_layer: Layer index to process (-2 by default, assuming LLaVA-style).
-        all_prev_layers: If True, considers all layers up to `select_layer`; otherwise, processes only the specified layer.
-    Returns:
-        Adjusted attention maps for each layer after removing the average attention across all layers.
-    """
-    avged = []
-
-    # Step 1: Compute the average attention map across all layers
-    all_layers_attn = []
-    for layer in attn:
-        layer_attns = layer.squeeze(0)  # Remove batch dimension
-        attns_per_head = layer_attns.mean(dim=0)  # Average attention across heads
-        vec = attns_per_head[0:, 0:].cpu()  # Extract token-level attention (no <CLS> restriction)
-        vec_normalized = vec / vec.sum(-1, keepdim=True)  # Normalize across tokens
-        all_layers_attn.append(vec_normalized)
-    avg_attn = torch.stack(all_layers_attn).mean(dim=0)  # Average attention across all layers
-
-    # Step 2: Subtract average attention from each layer and apply ReLU
-    for i, layer in enumerate(attn):
-        if all_prev_layers and i > len(attn) + select_layer:
-            break
-        layer_attns = layer.squeeze(0)
-        attns_per_head = layer_attns.mean(dim=0)
-        vec = attns_per_head[0:, 0:].cpu()
-        vec_normalized = vec / vec.sum(-1, keepdim=True)
-        # Subtract the average attention and apply ReLU to ensure non-negative values
-        adjusted_attention = torch.relu(vec_normalized - avg_attn)
-        avged.append(adjusted_attention)
-
-    if all_prev_layers:
-        return torch.stack(avged)  # Return all adjusted attention maps
-    else:
-        # For single layer mode, return adjusted attention for the selected layer
-        selected_layer = attn[select_layer]
-        layer_attns = selected_layer.squeeze(0)
-        attns_per_head = layer_attns.mean(dim=0)
-        vec = attns_per_head[0:, 0:].cpu()
-        vec_normalized = vec / vec.sum(-1, keepdim=True)
-        return torch.relu(vec_normalized - avg_attn)
-
+        del layer, layer_attns, attns_per_head, vec
+        return result
 
 def heterogenous_stack(vecs):
     '''Pad vectors with zeros then stack'''
