@@ -167,6 +167,7 @@ def add_gaussian_noise_outside_bbox(image, bbox, noise_level=0.0):
     return noisy_image
 
  # Normalize box diamentions
+
 def normalize_box(bbox, image_width=1025, image_height=1025):
     return (
         round(float(bbox[0] / image_width), 4),
@@ -206,29 +207,7 @@ def aggregate_llm_attention(attn):
         avged.append(vec / vec.sum())
     return torch.stack(avged).mean(dim=0)
 
-
-def aggregate_vit_attention(attn, select_layer=-2, all_prev_layers=True):
-    '''Assuming LLaVA-style `select_layer` which is -2 by default'''
-    if all_prev_layers:
-        avged = []
-        for i, layer in enumerate(attn):
-            if i > len(attn) + select_layer:
-                break
-            layer_attns = layer.squeeze(0)
-            attns_per_head = layer_attns.mean(dim=0)
-            #vec = attns_per_head[1:, 1:].cpu() # the first token is <CLS>
-            vec = attns_per_head[0:, 0:].cpu()
-            avged.append(vec / vec.sum(-1, keepdim=True))
-        return torch.stack(avged).mean(dim=0)
-    else:
-        layer = attn[select_layer]
-        layer_attns = layer.squeeze(0)
-        attns_per_head = layer_attns.mean(dim=0)
-        #vec = attns_per_head[1:, 1:].cpu() # the first token is <CLS>
-        vec = attns_per_head[0:, 0:].cpu()
-        return vec / vec.sum(-1, keepdim=True)
-
-def my_aggregate_vit_attention(attn, select_layer=-2, all_prev_layers=True):
+def aggregate_vit_attention_subtract_avg(attn, attn_avg, select_layer=-2, all_prev_layers=True):
     """
     Highlights layer-specific attention by subtracting the average attention across all layers
     and ensures the results are non-negative (only positive values or 0).
@@ -241,16 +220,6 @@ def my_aggregate_vit_attention(attn, select_layer=-2, all_prev_layers=True):
     """
     avged = []
 
-    # Step 1: Compute the average attention map across all layers
-    all_layers_attn = []
-    for layer in attn:
-        layer_attns = layer.squeeze(0)  # Remove batch dimension
-        attns_per_head = layer_attns.mean(dim=0)  # Average attention across heads
-        vec = attns_per_head[0:, 0:].cpu()  # Extract token-level attention (no <CLS> restriction)
-        vec_normalized = vec / vec.sum(-1, keepdim=True)  # Normalize across tokens
-        all_layers_attn.append(vec_normalized)
-    avg_attn = torch.stack(all_layers_attn).mean(dim=0)  # Average attention across all layers
-
     # Step 2: Subtract average attention from each layer and apply ReLU
     for i, layer in enumerate(attn):
         if all_prev_layers and i > len(attn) + select_layer:
@@ -260,7 +229,7 @@ def my_aggregate_vit_attention(attn, select_layer=-2, all_prev_layers=True):
         vec = attns_per_head[0:, 0:].cpu()
         vec_normalized = vec / vec.sum(-1, keepdim=True)
         # Subtract the average attention and apply ReLU to ensure non-negative values
-        adjusted_attention = torch.relu(vec_normalized - avg_attn)
+        adjusted_attention = torch.relu(vec_normalized - attn_avg[i])
         avged.append(adjusted_attention)
 
     if all_prev_layers:
@@ -272,7 +241,7 @@ def my_aggregate_vit_attention(attn, select_layer=-2, all_prev_layers=True):
         attns_per_head = layer_attns.mean(dim=0)
         vec = attns_per_head[0:, 0:].cpu()
         vec_normalized = vec / vec.sum(-1, keepdim=True)
-        return torch.relu(vec_normalized - avg_attn)
+        return torch.relu(vec_normalized - attn_avg[i])
 
 
 def heterogenous_stack(vecs):
@@ -342,6 +311,10 @@ dataset_path = "/mnt/cimec-storage6/users/filippo.merlo/sceneREG_data/final_data
 output_dir = "/mnt/cimec-storage6/users/filippo.merlo/sceneREG_data/attention_deployment"
 os.makedirs(output_dir, exist_ok=True)
 
+# whole dataset avg visual attention matrix
+
+avg_vis_attn_matrix_path = '/mnt/cimec-storage6/users/filippo.merlo/sceneREG_data/attention_deployment/vis_attn_matrix_average.pt'
+avg_vis_attn_matrix = torch.load(avg_vis_attn_matrix_path)
 
 data = load_dataset(dataset_path)
 images_n_p = get_images_names_path(images_path)
@@ -486,132 +459,118 @@ for condition in conditions:
 
 
         attn_over_target_list = []
+        attn_over_target_max_list = []
         attn_over_context_list = []
+        attn_over_context_max_list = []
         tot_attn_list = []
-        attention_density_t_list = []
-        attention_density_c_list = []
-        attention_density_tot_list = []
-        normalized_attetion_density_t_list = []
-        normalized_attetion_density_c_list = []
-        ratio_list = []
+        attn_over_image_max_list = []
+       
 
         for layer in list(range(0,26)):
 
-          vis_attn_matrix = my_aggregate_vit_attention(
-              att_on_whole_image, ### att_on_whole_image
-              select_layer=layer,
-              all_prev_layers=False
-          )
+            vis_attn_matrix = aggregate_vit_attention_subtract_avg(
+                att_on_whole_image, ### att_on_whole_image
+                attn_avg=avg_vis_attn_matrix,
+                select_layer=layer,
+                all_prev_layers=False
+            )
 
-          grid_size = model.get_vision_tower().num_patches_per_side ### grid_size
+            grid_size = model.get_vision_tower().num_patches_per_side ### grid_size
 
-          # Define the range of output tokens, excluding the last one
-          output_token_inds = list(range(output_token_start, output_token_end - 1))
+            # Define the range of output tokens, excluding the last one
+            output_token_inds = list(range(output_token_start, output_token_end - 1))
 
-          attn_over_image_final = None
-          
-          # Loop through all tokens except the last one
-          for i, token_id in enumerate(output_token_inds):
-              
-              # Compute attention weights for vision tokens for the current token
-              attn_weights_over_vis_tokens = llm_attn_matrix[token_id][vision_token_start:vision_token_end]
-              attn_weights_over_vis_tokens = attn_weights_over_vis_tokens / attn_weights_over_vis_tokens.sum()
+            attn_over_image_final = None
+            
+            # Loop through all tokens except the last one
+            for i, token_id in enumerate(output_token_inds):
+                
+                # Compute attention weights for vision tokens for the current token
+                attn_weights_over_vis_tokens = llm_attn_matrix[token_id][vision_token_start:vision_token_end]
+                attn_weights_over_vis_tokens = attn_weights_over_vis_tokens / attn_weights_over_vis_tokens.sum()
 
-              attn_over_image = []
-              
-              # Calculate weighted attention maps over visual tokens
-              for weight, vis_attn in zip(attn_weights_over_vis_tokens, vis_attn_matrix):
-                  vis_attn = vis_attn.reshape(grid_size, grid_size)
-                  attn_over_image.append(vis_attn * weight)
-              
-              # Combine the attention maps for this token
-              attn_over_image = torch.stack(attn_over_image).sum(dim=0)
-              attn_over_image = attn_over_image / attn_over_image.max()
+                attn_over_image = []
+                
+                # Calculate weighted attention maps over visual tokens
+                for weight, vis_attn in zip(attn_weights_over_vis_tokens, vis_attn_matrix):
+                    vis_attn = vis_attn.reshape(grid_size, grid_size)
+                    attn_over_image.append(vis_attn * weight)
+                
+                # Combine the attention maps for this token
+                attn_over_image = torch.stack(attn_over_image).sum(dim=0)
+                attn_over_image = attn_over_image / attn_over_image.max()
 
-              # Upsample to match the original image size
-              attn_over_image = F.interpolate(
-                  attn_over_image.unsqueeze(0).unsqueeze(0),
-                  size=image.size, 
-                  mode='nearest',
-              ).squeeze()
+                # Upsample to match the original image size
+                attn_over_image = F.interpolate(
+                    attn_over_image.unsqueeze(0).unsqueeze(0),
+                    size=image.size, 
+                    mode='nearest',
+                ).squeeze()
 
-              # Accumulate attention maps to average over tokens
-              if attn_over_image_final is None:
-                  attn_over_image_final = attn_over_image
-              else:
-                  attn_over_image_final += attn_over_image
+                # Accumulate attention maps to average over tokens
+                if attn_over_image_final is None:
+                    attn_over_image_final = attn_over_image
+                else:
+                    attn_over_image_final += attn_over_image
 
-          # Compute the average over all tokens except the last one
-          attn_over_image_final /= len(output_token_inds)
+            # Compute the average over all tokens except the last one
+            attn_over_image_final /= len(output_token_inds)
 
-          # METRICS
+            # METRICS
 
-          attn_over_image = attn_over_image_final.to(torch.float64)
+            attn_over_image = attn_over_image_final.to(torch.float64)
 
-          x_min, y_min, w, h = bbox ### bbox
+            x_min, y_min, w, h = bbox ### bbox
 
-          target_area = w * h
-          original_image_w = original_image_size[0] ### original_image_size
-          original_image_h = original_image_size[1]
-          grey_board_lenght = int((original_image_w - original_image_h)/2)
-          tot_area = original_image_w * original_image_h
+            target_area = w * h
+            original_image_w = original_image_size[0] ### original_image_size
+            original_image_h = original_image_size[1]
+            grey_board_lenght = int((original_image_w - original_image_h)/2)
+            tot_area = original_image_w * original_image_h
 
-          context_area = tot_area - target_area
-  
-          x_max = x_min + w
-          y_max = y_min + h
+            context_area = tot_area - target_area
 
-          y_min = int(y_min)
-          y_max = int(y_max)
-          x_min = int(x_min)
-          x_max = int(x_max)
-  
-          attn_over_target = attn_over_image[y_min:y_max, x_min:x_max]
-          attn_over_target = attn_over_target.sum().item()
-  
-          # Create a mask for the entire image (1 for context, 0 for target)
-          mask = torch.ones_like(attn_over_image)
-          mask[0:grey_board_lenght, :] = 0 # Upper board
-          mask[original_image_w-grey_board_lenght:, :] = 0 # Lower board
-          mask[y_min:y_max, x_min:x_max] = 0  # Set target area to 0
-  
-          # Compute attention over the context area
-          attn_over_context = attn_over_image * mask
-          attn_over_context = attn_over_context.sum().item()
-  
-          tot_attn = attn_over_target + attn_over_context
-  
-          # fist method
-          attention_density_t = attn_over_target/target_area
-          attention_density_c  = attn_over_context/context_area
-          # second method
-          #attention_density_t = attn_over_target/(target_area*attn_over_image.max())
-          #attention_density_c  = attn_over_context/(context_area*attn_over_image.max())
-  
-          attention_density_tot = tot_attn/tot_area
-  
-          normalized_attetion_density_t = attention_density_t/attention_density_tot
-          normalized_attetion_density_c = attention_density_c/attention_density_tot
-  
-          ratio = normalized_attetion_density_t/normalized_attetion_density_c
+            x_max = x_min + w
+            y_max = y_min + h
 
-          attn_over_target_list.append(attn_over_target)
-          attn_over_context_list.append(attn_over_context)
-          tot_attn_list.append(tot_attn)
-          attention_density_t_list.append(attention_density_t)
-          attention_density_c_list.append(attention_density_c)
-          attention_density_tot_list.append(attention_density_tot)
-          normalized_attetion_density_t_list.append(normalized_attetion_density_t)
-          normalized_attetion_density_c_list.append(normalized_attetion_density_c)
-          ratio_list.append(ratio)
-           
-          del attn_over_image
-          del attn_over_image_final
-          del mask
-          del attn_weights_over_vis_tokens
+            y_min = int(y_min)
+            y_max = int(y_max)
+            x_min = int(x_min)
+            x_max = int(x_max)
 
-          # Cleanup after each layer
-          del vis_attn_matrix
+            attn_over_target = attn_over_image[y_min:y_max, x_min:x_max]
+            attn_over_target_max = attn_over_target.max()
+            attn_over_target = attn_over_target.sum().item()
+
+            # Create a mask for the entire image (1 for context, 0 for target)
+            mask = torch.ones_like(attn_over_image)
+            mask[0:grey_board_lenght, :] = 0 # Upper board
+            mask[original_image_w-grey_board_lenght:, :] = 0 # Lower board
+            mask[y_min:y_max, x_min:x_max] = 0  # Set target area to 0
+
+            # Compute attention over the context area
+            attn_over_context = attn_over_image * mask
+            attn_over_context_max = attn_over_context.max()
+            attn_over_context = attn_over_context.sum().item()
+
+            tot_attn = attn_over_image.sum().item()
+            attn_over_image_max = attn_over_image.max()
+            
+            attn_over_target_list.append(attn_over_target)
+            attn_over_target_max_list.append(attn_over_target_max)
+            attn_over_context_list.append(attn_over_context)
+            attn_over_context_max_list.append(attn_over_context)
+            tot_attn_list.append(tot_attn)
+            attn_over_image_max_list.append(attn_over_image_max)
+            
+            
+            del attn_over_image
+            del attn_over_image_final
+            del mask
+            del attn_weights_over_vis_tokens
+
+            # Cleanup after each layer
+            del vis_attn_matrix
           
 
         # Append the results as a dictionary to the list
@@ -638,14 +597,11 @@ for condition in conditions:
             'x_max': x_max,
             'y_max': y_max,
             'attn_over_target': attn_over_target_list,
+            'attn_over_target_max': attn_over_target_max_list,
             'attn_over_context': attn_over_context_list,
+            'attn_over_context_max': attn_over_context_max_list,
             'tot_attn': tot_attn_list,
-            'attention_density_t': attention_density_t_list,
-            'attention_density_c': attention_density_c_list,
-            'attention_density_tot': attention_density_tot_list,
-            'normalized_attetion_density_t': normalized_attetion_density_t_list,
-            'normalized_attetion_density_c': normalized_attetion_density_c_list,
-            'ratio': ratio_list
+            'attn_over_image_max': attn_over_image_max_list
         })
 
         # Final cleanup
