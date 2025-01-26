@@ -342,7 +342,7 @@ for condition in conditions:
       log_gpu_usage()
       if data[image_name]['excluded']:
         continue
-
+ 
       bbox = data[image_name]['target_bbox']
 
       if '_original.jpg' in image_name:
