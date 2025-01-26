@@ -338,8 +338,7 @@ for condition in conditions:
     elif conditions == 'all_noise' and noise_level == 0.0:
       continue
 
-    for image_name, image_path  in tqdm(list(images_n_p.items())[0:50]):
-      log_gpu_usage()
+    for image_name, image_path  in tqdm(list(images_n_p.items())):
       if data[image_name]['excluded']:
         continue
  
@@ -408,7 +407,6 @@ for condition in conditions:
             return_dict_in_generate=True,
             output_attentions=True,
         )
-        log_gpu_usage()
 
         del image_tensor
 
