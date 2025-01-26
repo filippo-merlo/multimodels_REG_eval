@@ -331,14 +331,14 @@ def log_gpu_usage():
     print(f"Cached memory: {torch.cuda.memory_reserved() / 1e6} MB")
 
 
-for condition in conditions:
-  for noise_level in noise_levels:
+for condition in tqdm(conditions, desc="conditions"):
+  for noise_level in tqdm(noise_levels, desc="noise lev"):
     if conditions == 'context_noise' and noise_level == 0.0:
       continue
     elif conditions == 'all_noise' and noise_level == 0.0:
       continue
 
-    for image_name, image_path  in tqdm(list(images_n_p.items())):
+    for image_name, image_path  in tqdm(list(images_n_p.items()), desc="images"):
       if data[image_name]['excluded']:
         continue
  
