@@ -325,6 +325,12 @@ evaluation_results = []
 
 results_list = []
 
+# Function to monitor GPU memory
+def log_gpu_usage():
+    print(f"Allocated memory: {torch.cuda.memory_allocated() / 1e6} MB")
+    print(f"Cached memory: {torch.cuda.memory_reserved() / 1e6} MB")
+
+
 for condition in conditions:
   for noise_level in noise_levels:
     if conditions == 'context_noise' and noise_level == 0.0:
@@ -333,6 +339,7 @@ for condition in conditions:
       continue
 
     for image_name, image_path  in tqdm(list(images_n_p.items())):
+      log_gpu_usage()
       if data[image_name]['excluded']:
         continue
 
