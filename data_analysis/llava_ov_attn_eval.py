@@ -622,13 +622,13 @@ for condition in tqdm(conditions, desc="conditions"):
         del llm_attn_matrix
         del att_on_whole_image
 
-# Convert the list to a DataFrame
-results_df = pd.DataFrame(results_list)
+    # Convert the list to a DataFrame
+    results_df = pd.DataFrame(results_list)
 
-# Define the file path
-output_file = os.path.join(output_dir, "results_att_deployment.csv")
+    # Define the file path
+    output_file = os.path.join(output_dir, "results_att_deployment.csv")
 
-# Save the DataFrame to a CSV file
-results_df.to_csv(output_file, index=False)
+    # Save the DataFrame to a CSV file
+    results_df.to_csv(output_file, index=False)
 
-print(f"Results saved to {output_file}")
+    print(f"Results saved to {output_file}")
