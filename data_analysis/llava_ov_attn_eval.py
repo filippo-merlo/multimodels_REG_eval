@@ -405,6 +405,7 @@ for condition in conditions:
             return_dict_in_generate=True,
             output_attentions=True,
         )
+        log_gpu_usage()
 
         del image_tensor
 
