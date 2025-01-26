@@ -270,6 +270,11 @@ def show_mask_on_image(img, mask):
     cam = cam / np.max(cam)
     return np.uint8(255 * cam), heatmap
 
+
+import os
+# Set CUDA_VISIBLE_DEVICES to use GPU 1
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
 # ===> specify the model path
 pretrained = "lmms-lab/llava-onevision-qwen2-0.5b-si"
 model_name = "llava_qwen"
