@@ -393,6 +393,9 @@ for condition in conditions:
 
         input_ids = tokenizer_image_token(prompt, tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt").unsqueeze(0).to(device)
 
+        gc.collect()
+        torch.cuda.empty_cache()
+
         # generate the response
         outputs = model.generate(
             input_ids,
@@ -615,8 +618,6 @@ for condition in conditions:
         # Final cleanup
         del llm_attn_matrix
         del att_on_whole_image
-        gc.collect()
-        torch.cuda.empty_cache()
 
 # Convert the list to a DataFrame
 results_df = pd.DataFrame(results_list)
