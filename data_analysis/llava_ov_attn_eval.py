@@ -630,5 +630,5 @@ for condition in tqdm(conditions, desc="conditions"):
 
     # Save the DataFrame to a CSV file
     results_df.to_csv(output_file, index=False)
-
+    print(f"State, Condition:{condition}, Noise:{noise_level}")
     print(f"Results saved to {output_file}")
