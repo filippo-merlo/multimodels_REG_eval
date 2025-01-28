@@ -180,74 +180,17 @@ def convert_box(bbox):
     x, y, w, h = tuple(bbox) # Box coordinates are in (left, top, width, height) format
     return [x, y, x+w, y+h]
 
-# many are copied from https://github.com/mattneary/attention/blob/master/attention/attention.py
-# here it nullifies the attention over the first token (<bos>)
-# which in practice we find to be a good idea
 
 
-def aggregate_llm_attention(attn):
-    '''Extract average attention vector'''
-    avged = []
-    for layer in attn:
-        layer_attns = layer.squeeze(0)
-        attns_per_head = layer_attns.mean(dim=0)
-        vec = torch.concat((
-            # We zero the first entry because it's what's called
-            # null attention (https://aclanthology.org/W19-4808.pdf)
-            torch.tensor([0.]),
-            # usually there's only one item in attns_per_head but
-            # on the first generation, there's a row for each token
-            # in the prompt as well, so take [-1]
-            attns_per_head[-1][1:].cpu(),
-            # attns_per_head[-1].cpu(),
-            # add zero for the final generated token, which never
-            # gets any attention
-            torch.tensor([0.]),
-        ))
-        avged.append(vec / vec.sum())
-        del layer_attns, attns_per_head, vec
-    
-    result = torch.stack(avged).mean(dim=0)
-    # Clean up before returning
-    del avged
-    return result
 
-
-def aggregate_vit_attention(attn, select_layer=-2, all_prev_layers=True):
-    '''Assuming LLaVA-style `select_layer` which is -2 by default'''
-    if all_prev_layers:
-        avged = []
-        for i, layer in enumerate(attn):
-            if i > len(attn) + select_layer:
-                break
-            layer_attns = layer.squeeze(0)
-            attns_per_head = layer_attns.mean(dim=0)
-            #vec = attns_per_head[1:, 1:].cpu() # the first token is <CLS>
-            vec = attns_per_head[0:, 0:].cpu()
-            avged.append(vec / vec.sum(-1, keepdim=True))
-
-            del layer_attns, attns_per_head, vec
-        result = torch.stack(avged).mean(dim=0)
-        del avged
-        return result
-    else:
-        layer = attn[select_layer]
-        layer_attns = layer.squeeze(0)
-        attns_per_head = layer_attns.mean(dim=0)
-        #vec = attns_per_head[1:, 1:].cpu() # the first token is <CLS>
-        vec = attns_per_head[0:, 0:].cpu()
-        result = vec / vec.sum(-1, keepdim=True)
-
-        del layer, layer_attns, attns_per_head, vec
-        return result
-
-def heterogenous_stack(vecs):
-    '''Pad vectors with zeros then stack'''
-    max_length = max(v.shape[0] for v in vecs)
-    return torch.stack([
-        torch.concat((v, torch.zeros(max_length - v.shape[0])))
-        for v in vecs
-    ])
+def aggregate_vit_attention(attn, select_layer):
+    layer = attn[select_layer]
+    layer_attns = layer.squeeze(0)
+    attns_per_head = layer_attns.mean(dim=0)
+    result = attns_per_head / attns_per_head.sum(-1, keepdim=True)
+    result = result.cpu()
+    del layer, layer_attns, attns_per_head
+    return result.cpu()
 
 
 def load_image(image_path_or_url):
