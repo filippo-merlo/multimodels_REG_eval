@@ -202,46 +202,21 @@ def aggregate_llm_attention(attn):
             # attns_per_head[-1].cpu(),
             # add zero for the final generated token, which never
             # gets any attention
-            torch.tensor([0.]),
+            #torch.tensor([0.]),
         ))
         avged.append(vec / vec.sum())
     return torch.stack(avged).mean(dim=0)
 
-def aggregate_vit_attention_subtract_avg(attn, attn_avg, select_layer=-2, all_prev_layers=True):
-    """
-    Highlights layer-specific attention by subtracting the average attention across all layers
-    and ensures the results are non-negative (only positive values or 0).
-    Parameters:
-        attn: List of attention maps, one per layer. Each map is of shape (batch_size, num_heads, num_tokens, num_tokens).
-        select_layer: Layer index to process (-2 by default, assuming LLaVA-style).
-        all_prev_layers: If True, considers all layers up to `select_layer`; otherwise, processes only the specified layer.
-    Returns:
-        Adjusted attention maps for each layer after removing the average attention across all layers.
-    """
-    avged = []
 
-    # Step 2: Subtract average attention from each layer and apply ReLU
-    for i, layer in enumerate(attn):
-        if all_prev_layers and i > len(attn) + select_layer:
-            break
-        layer_attns = layer.squeeze(0)
-        attns_per_head = layer_attns.mean(dim=0)
-        vec = attns_per_head[0:, 0:].cpu()
-        vec_normalized = vec / vec.sum(-1, keepdim=True)
-        # Subtract the average attention and apply ReLU to ensure non-negative values
-        adjusted_attention = torch.relu(vec_normalized - attn_avg[i])
-        avged.append(adjusted_attention)
-
-    if all_prev_layers:
-        return torch.stack(avged)  # Return all adjusted attention maps
-    else:
+def aggregate_vit_attention_subtract_avg(attn, attn_avg, select_layer=-2):
         # For single layer mode, return adjusted attention for the selected layer
         selected_layer = attn[select_layer]
         layer_attns = selected_layer.squeeze(0)
         attns_per_head = layer_attns.mean(dim=0)
         vec = attns_per_head[0:, 0:].cpu()
         vec_normalized = vec / vec.sum(-1, keepdim=True)
-        return torch.relu(vec_normalized - attn_avg[i])
+        normalized_attn_avg = attn_avg[i] / attn_avg[i].sum(-1, keepdim=True)
+        return torch.relu(vec_normalized - normalized_attn_avg[i])
 
 
 def heterogenous_stack(vecs):
@@ -437,8 +412,7 @@ for condition in tqdm(conditions, desc="conditions"):
         # llm_attn_matrix will be of torch.Size([N, N])
         # where N is the total number of input (both image and text ones) + output tokens
         llm_attn_matrix = heterogenous_stack(
-            [torch.tensor([1])]
-            + list(aggregated_prompt_attention)
+            list(aggregated_prompt_attention)
             + list(map(aggregate_llm_attention, outputs["attentions"]))
         )
 
@@ -485,8 +459,7 @@ for condition in tqdm(conditions, desc="conditions"):
             vis_attn_matrix = aggregate_vit_attention_subtract_avg(
                 att_on_whole_image, ### att_on_whole_image
                 attn_avg=avg_vis_attn_matrix,
-                select_layer=layer,
-                all_prev_layers=False
+                select_layer=layer
             )
 
             grid_size = model.get_vision_tower().num_patches_per_side ### grid_size
