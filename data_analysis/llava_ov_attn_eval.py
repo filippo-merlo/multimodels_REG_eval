@@ -215,8 +215,8 @@ def aggregate_vit_attention_subtract_avg(attn, attn_avg, select_layer=-2):
         attns_per_head = layer_attns.mean(dim=0)
         vec = attns_per_head[0:, 0:].cpu()
         vec_normalized = vec / vec.sum(-1, keepdim=True)
-        normalized_attn_avg = attn_avg[i] / attn_avg[i].sum(-1, keepdim=True)
-        return torch.relu(vec_normalized - normalized_attn_avg[i])
+        #attn_avg = attn_avg[i] / attn_avg[i].sum(-1, keepdim=True) # good idea to normalize?
+        return torch.relu(vec_normalized - attn_avg[i])
 
 
 def heterogenous_stack(vecs):
