@@ -14,7 +14,7 @@ separator = "\n\n##################################################\n###########
 file_path = '/Users/filippomerlo/Desktop/attention_deployment/results_att_deployment.csv'  # Update with your actual file path
 df = pd.read_csv(file_path)
 df['rel_level'] = df['rel_level'].fillna('original')
-
+df['condition'] = df['condition'].str.replace('_noise', '', regex=True)
 #%%
 # --- Filter dataset based on available image filenames ---
 filtered_images_folder_path = '/Users/filippomerlo/Desktop/manually_filtered_images'
@@ -68,10 +68,10 @@ filtered_data = grouped_means[grouped_means['noise_level'] == noyse_level_filter
 
 plt.figure(figsize=(8, 6))
 for (condition, rel_level), sub_df in filtered_data.groupby(['condition', 'rel_level']):
-    if condition != 'target_noise':
+    if condition != 'target':
         continue
     sub_df = sub_df.sort_values(by='layer')
-    plt.plot(sub_df['layer'], sub_df['attn_ratio'], marker='o', linestyle='-', label=f'Cond: {condition}, Rel: {rel_level}')
+    plt.plot(sub_df['layer'], sub_df['attn_ratio'], marker='o', linestyle='-', label=f'Rel: {rel_level}')
 
 plt.xlabel('Layer')
 plt.ylabel('Mean Attention Ratio')
@@ -110,13 +110,60 @@ plt.legend()
 plt.grid()
 plt.show()
 
-
 #%%
-import scipy.stats as stats
-import scikit_posthocs as sp
-import pingouin as pg
+# 
+r_mean_n_00_c_target_rel_original = grouped_means[(grouped_means['noise_level'] == 0.0) & (grouped_means['condition'] == 'target') & (grouped_means['rel_level'] == 'original')].sort_values(by='layer')['attn_ratio'].mean()
+r_mean_n_05_c_target_rel_original = grouped_means[(grouped_means['noise_level'] == 0.5) & (grouped_means['condition'] == 'target') & (grouped_means['rel_level'] == 'original')].sort_values(by='layer')['attn_ratio'].mean()
+r_mean_n_10_c_target_rel_original = grouped_means[(grouped_means['noise_level'] == 1.0) & (grouped_means['condition'] == 'target') & (grouped_means['rel_level'] == 'original')].sort_values(by='layer')['attn_ratio'].mean()
+r_mean_n_00_c_context_rel_original = grouped_means[(grouped_means['noise_level'] == 0.0) & (grouped_means['condition'] == 'context') & (grouped_means['rel_level'] == 'original')].sort_values(by='layer')['attn_ratio'].mean()
+r_mean_n_05_c_context_rel_original = grouped_means[(grouped_means['noise_level'] == 0.5) & (grouped_means['condition'] == 'context') & (grouped_means['rel_level'] == 'original')].sort_values(by='layer')['attn_ratio'].mean()
+r_mean_n_10_c_context_rel_original = grouped_means[(grouped_means['noise_level'] == 1.0) & (grouped_means['condition'] == 'context') & (grouped_means['rel_level'] == 'original')].sort_values(by='layer')['attn_ratio'].mean()
+r_mean_n_00_c_all_rel_original = grouped_means[(grouped_means['noise_level'] == 0.0) & (grouped_means['condition'] == 'all') & (grouped_means['rel_level'] == 'original')].sort_values(by='layer')['attn_ratio'].mean()
+r_mean_n_05_c_all_rel_original = grouped_means[(grouped_means['noise_level'] == 0.5) & (grouped_means['condition'] == 'all') & (grouped_means['rel_level'] == 'original')].sort_values(by='layer')['attn_ratio'].mean()
+r_mean_n_10_c_all_rel_original = grouped_means[(grouped_means['noise_level'] == 1.0) & (grouped_means['condition'] == 'all') & (grouped_means['rel_level'] == 'original')].sort_values(by='layer')['attn_ratio'].mean()
 
-# --- Statistical testing: Comparing attention ratios across relevance levels ---
-rel_levels = df_exploded['rel_level'].unique()
+r_mean_n_00_c_target_rel_middle = grouped_means[(grouped_means['noise_level'] == 0.0) & (grouped_means['condition'] == 'target') & (grouped_means['rel_level'] == 'middle')].sort_values(by='layer')['attn_ratio'].mean()
+r_mean_n_05_c_target_rel_middle = grouped_means[(grouped_means['noise_level'] == 0.5) & (grouped_means['condition'] == 'target') & (grouped_means['rel_level'] == 'middle')].sort_values(by='layer')['attn_ratio'].mean()
+r_mean_n_10_c_target_rel_middle = grouped_means[(grouped_means['noise_level'] == 1.0) & (grouped_means['condition'] == 'target') & (grouped_means['rel_level'] == 'middle')].sort_values(by='layer')['attn_ratio'].mean()
+r_mean_n_00_c_context_rel_middle = grouped_means[(grouped_means['noise_level'] == 0.0) & (grouped_means['condition'] == 'context') & (grouped_means['rel_level'] == 'middle')].sort_values(by='layer')['attn_ratio'].mean()
+r_mean_n_05_c_context_rel_middle = grouped_means[(grouped_means['noise_level'] == 0.5) & (grouped_means['condition'] == 'context') & (grouped_means['rel_level'] == 'middle')].sort_values(by='layer')['attn_ratio'].mean()
+r_mean_n_10_c_context_rel_middle = grouped_means[(grouped_means['noise_level'] == 1.0) & (grouped_means['condition'] == 'context') & (grouped_means['rel_level'] == 'middle')].sort_values(by='layer')['attn_ratio'].mean()
+r_mean_n_00_c_all_rel_middle = grouped_means[(grouped_means['noise_level'] == 0.0) & (grouped_means['condition'] == 'all') & (grouped_means['rel_level'] == 'middle')].sort_values(by='layer')['attn_ratio'].mean()
+r_mean_n_05_c_all_rel_middle = grouped_means[(grouped_means['noise_level'] == 0.5) & (grouped_means['condition'] == 'all') & (grouped_means['rel_level'] == 'middle')].sort_values(by='layer')['attn_ratio'].mean()
+r_mean_n_10_c_all_rel_middle = grouped_means[(grouped_means['noise_level'] == 1.0) & (grouped_means['condition'] == 'all') & (grouped_means['rel_level'] == 'middle')].sort_values(by='layer')['attn_ratio'].mean()
 
-data_groups = [df_exploded[df_exploded['rel_level'] == rel]['attn_ratio'].dropna().astype(float) for rel in rel_levels]
+r_mean_n_00_c_target_rel_low = grouped_means[(grouped_means['noise_level'] == 0.0) & (grouped_means['condition'] == 'target') & (grouped_means['rel_level'] == 'low')].sort_values(by='layer')['attn_ratio'].mean()
+r_mean_n_05_c_target_rel_low = grouped_means[(grouped_means['noise_level'] == 0.5) & (grouped_means['condition'] == 'target') & (grouped_means['rel_level'] == 'low')].sort_values(by='layer')['attn_ratio'].mean()
+r_mean_n_10_c_target_rel_low = grouped_means[(grouped_means['noise_level'] == 1.0) & (grouped_means['condition'] == 'target') & (grouped_means['rel_level'] == 'low')].sort_values(by='layer')['attn_ratio'].mean()
+r_mean_n_00_c_context_rel_low = grouped_means[(grouped_means['noise_level'] == 0.0) & (grouped_means['condition'] == 'context') & (grouped_means['rel_level'] == 'low')].sort_values(by='layer')['attn_ratio'].mean()
+r_mean_n_05_c_context_rel_low = grouped_means[(grouped_means['noise_level'] == 0.5) & (grouped_means['condition'] == 'context') & (grouped_means['rel_level'] == 'low')].sort_values(by='layer')['attn_ratio'].mean()
+r_mean_n_10_c_context_rel_low = grouped_means[(grouped_means['noise_level'] == 1.0) & (grouped_means['condition'] == 'context') & (grouped_means['rel_level'] == 'low')].sort_values(by='layer')['attn_ratio'].mean()
+r_mean_n_00_c_all_rel_low = grouped_means[(grouped_means['noise_level'] == 0.0) & (grouped_means['condition'] == 'all') & (grouped_means['rel_level'] == 'low')].sort_values(by='layer')['attn_ratio'].mean()
+r_mean_n_05_c_all_rel_low = grouped_means[(grouped_means['noise_level'] == 0.5) & (grouped_means['condition'] == 'all') & (grouped_means['rel_level'] == 'low')].sort_values(by='layer')['attn_ratio'].mean()
+r_mean_n_10_c_all_rel_low = grouped_means[(grouped_means['noise_level'] == 1.0) & (grouped_means['condition'] == 'all') & (grouped_means['rel_level'] == 'low')].sort_values(by='layer')['attn_ratio'].mean()
+
+
+# Create a dictionary to store the results
+results = {
+    ("target", "original"): [r_mean_n_00_c_target_rel_original, r_mean_n_05_c_target_rel_original, r_mean_n_10_c_target_rel_original],
+    ("context", "original"): [r_mean_n_00_c_context_rel_original, r_mean_n_05_c_context_rel_original, r_mean_n_10_c_context_rel_original],
+    ("all", "original"): [r_mean_n_00_c_all_rel_original, r_mean_n_05_c_all_rel_original, r_mean_n_10_c_all_rel_original],
+    ("target", "middle"): [r_mean_n_00_c_target_rel_middle, r_mean_n_05_c_target_rel_middle, r_mean_n_10_c_target_rel_middle],
+    ("context", "middle"): [r_mean_n_00_c_context_rel_middle, r_mean_n_05_c_context_rel_middle, r_mean_n_10_c_context_rel_middle],
+    ("all", "middle"): [r_mean_n_00_c_all_rel_middle, r_mean_n_05_c_all_rel_middle, r_mean_n_10_c_all_rel_middle],
+    ("target", "low"): [r_mean_n_00_c_target_rel_low, r_mean_n_05_c_target_rel_low, r_mean_n_10_c_target_rel_low],
+    ("context", "low"): [r_mean_n_00_c_context_rel_low, r_mean_n_05_c_context_rel_low, r_mean_n_10_c_context_rel_low],
+    ("all", "low"): [r_mean_n_00_c_all_rel_low, r_mean_n_05_c_all_rel_low, r_mean_n_10_c_all_rel_low],
+}
+
+# Convert to DataFrame
+df_results = pd.DataFrame.from_dict(results, orient="index", columns=["Noise 0.0", "Noise 0.5", "Noise 1.0"])
+
+# Rename index for better readability
+df_results.index = pd.MultiIndex.from_tuples(df_results.index, names=["Condition", "Relatedness Level"])
+
+# Replace NaN values with "Not Available"
+df_results = df_results.fillna("Not Available")
+
+# Print the table
+print(df_results)
