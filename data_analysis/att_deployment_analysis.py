@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 import os
+from pprint import pprint
 
 tqdm.pandas()
 
@@ -56,15 +57,31 @@ df['attn_ratio'] = df.progress_apply(compute_ratio, axis=1)
 # --- Expand data to have separate rows per layer ---
 df['layer'] = df['attn_ratio'].apply(lambda x: list(range(len(x))))  # Add index for each layer
 df_exploded = df.explode(['attn_ratio', 'layer'])  # Expand lists into rows
+#%%
+# clean output and compute accuracy 
+df_exploded['output_clean'] = df_exploded['output_text'].str.replace(r'<\|im_end\|>', '', regex=True).str.replace(r'\.', '', regex=True).str.lower()
+df_exploded['target_clean'] = df_exploded['target'].str.replace(r' \([^)]*\)', '', regex=True).str.lower()
+
+from Levenshtein import ratio
+# Compute similarity ratio between long_output and long_target
+df_exploded['Levenshtein ratio'] = df_exploded.apply(lambda row: ratio(row['output_clean'].lower(), row['target_clean'].lower()), axis=1)
+df_exploded['hard_accuracy'] = df_exploded.apply(lambda row: ratio(row['output_clean'].lower(), row['target_clean'].lower()) > 0.55, axis=1).astype(int)
+#%%
+# --- Filter for accuracy ---
+df_exploded_correct = df_exploded[df_exploded['hard_accuracy'] == 1]
+df_exploded_wrong = df_exploded[df_exploded['hard_accuracy'] == 0]
+
+print(df_exploded.shape[0])
+print(df_exploded_correct.shape[0])
+print(df_exploded_wrong.shape[0])
 
 #%%
 # --- Compute mean attention ratio per layer grouped by condition ---
-grouped_means = df_exploded.groupby(['condition', 'noise_level', 'rel_level', 'layer'])['attn_ratio'].mean().reset_index()
+grouped_means = df_exploded_correct.groupby(['condition', 'noise_level', 'rel_level', 'layer'])['attn_ratio'].mean().reset_index()
 
-#%%
 # --- Filter and plot results for a specific noise level ---
-noyse_level_filter = 0.0  # Set noise level for filtering
-filtered_data = grouped_means[grouped_means['noise_level'] == noyse_level_filter]
+noise_level_filter = 0.0  # Set noise level for filtering
+filtered_data = grouped_means[grouped_means['noise_level'] == noise_level_filter]
 
 plt.figure(figsize=(8, 6))
 for (condition, rel_level), sub_df in filtered_data.groupby(['condition', 'rel_level']):
@@ -75,13 +92,13 @@ for (condition, rel_level), sub_df in filtered_data.groupby(['condition', 'rel_l
 
 plt.xlabel('Layer')
 plt.ylabel('Mean Attention Ratio')
-plt.title(f'Mean Attention Ratio per Layer (Noise = {noyse_level_filter})')
+plt.title(f'Mean Attention Ratio per Layer (Noise = {noise_level_filter})')
 plt.legend()
 plt.grid()
 plt.show()
 
-noyse_level_filter = 0.5  # Set noise level for filtering
-filtered_data = grouped_means[grouped_means['noise_level'] == noyse_level_filter]
+noise_level_filter = 0.5  # Set noise level for filtering
+filtered_data = grouped_means[grouped_means['noise_level'] == noise_level_filter]
 
 plt.figure(figsize=(8, 6))
 for (condition, rel_level), sub_df in filtered_data.groupby(['condition', 'rel_level']):
@@ -90,13 +107,13 @@ for (condition, rel_level), sub_df in filtered_data.groupby(['condition', 'rel_l
 
 plt.xlabel('Layer')
 plt.ylabel('Mean Attention Ratio')
-plt.title(f'Mean Attention Ratio per Layer (Noise = {noyse_level_filter})')
+plt.title(f'Mean Attention Ratio per Layer (Noise = {noise_level_filter})')
 plt.legend()
 plt.grid()
 plt.show()
 
-noyse_level_filter = 1.0  # Set noise level for filtering
-filtered_data = grouped_means[grouped_means['noise_level'] == noyse_level_filter]
+noise_level_filter = 1.0  # Set noise level for filtering
+filtered_data = grouped_means[grouped_means['noise_level'] == noise_level_filter]
 
 plt.figure(figsize=(8, 6))
 for (condition, rel_level), sub_df in filtered_data.groupby(['condition', 'rel_level']):
@@ -105,7 +122,7 @@ for (condition, rel_level), sub_df in filtered_data.groupby(['condition', 'rel_l
 
 plt.xlabel('Layer')
 plt.ylabel('Mean Attention Ratio')
-plt.title(f'Mean Attention Ratio per Layer (Noise = {noyse_level_filter})')
+plt.title(f'Mean Attention Ratio per Layer (Noise = {noise_level_filter})')
 plt.legend()
 plt.grid()
 plt.show()
