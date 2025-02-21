@@ -65,6 +65,7 @@ df['Levenshtein ratio'] = df.apply(lambda row: ratio(row['output_clean'], row['t
 df['hard_accuracy'] = df.apply(lambda row: row['Levenshtein ratio'] >= 0.55, axis=1).astype(int)
 # Find the longest string in 'target_clean'
 max_length = max(df['target_clean'].apply(len))
+print(max_length)
 # Filter out rows where 'output_clean' is longer than max_length
 df_hard_accuracy = df[df['output_clean'].apply(len) <= max_length] #!!!
 hard_accuracy_by_combined = df_hard_accuracy.groupby(['Rel. Level', 'noise_level', 'Noise Area'])[
@@ -115,8 +116,8 @@ merged_soft_accuracy = soft_accuracy_by_combined.merge(
     how='outer'  # Ensures all data is included
 ).round(3)
 
+merged_soft_accuracy
 #%%
-
 # Group data by 'rel_level', 'noise_level', and 'condition', then compute mean scores
 semantic_by_combined = df.groupby(['Rel. Level', 'noise_level', 'Noise Area'])[
     ['long_caption_scores', 'long_caption_text_similarity_scores']

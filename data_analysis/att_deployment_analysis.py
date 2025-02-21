@@ -65,7 +65,7 @@ df_exploded['target_clean'] = df_exploded['target'].str.replace(r' \([^)]*\)', '
 from Levenshtein import ratio
 # Compute similarity ratio between long_output and long_target
 df_exploded['Levenshtein ratio'] = df_exploded.apply(lambda row: ratio(row['output_clean'].lower(), row['target_clean'].lower()), axis=1)
-df_exploded['hard_accuracy'] = df_exploded.apply(lambda row: ratio(row['output_clean'].lower(), row['target_clean'].lower()) > 0.55, axis=1).astype(int)
+df_exploded['hard_accuracy'] = df_exploded.apply(lambda row: ratio(row['output_clean'].lower(), row['target_clean'].lower()) >= 0.55, axis=1).astype(int)
 #%%
 # --- Filter for accuracy ---
 df_exploded_correct = df_exploded[df_exploded['hard_accuracy'] == 1]
