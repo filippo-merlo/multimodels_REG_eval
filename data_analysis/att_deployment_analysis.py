@@ -57,6 +57,7 @@ df['attn_ratio'] = df.progress_apply(compute_ratio, axis=1)
 # --- Expand data to have separate rows per layer ---
 df['layer'] = df['attn_ratio'].apply(lambda x: list(range(len(x))))  # Add index for each layer
 df_exploded = df.explode(['attn_ratio', 'layer'])  # Expand lists into rows
+df_exploded['attn_ratio'] = df_exploded['attn_ratio'].apply(pd.to_numeric, errors='coerce')
 #%%
 # clean output and compute accuracy 
 df_exploded['output_clean'] = df_exploded['output_text'].str.replace(r'<\|im_end\|>', '', regex=True).str.replace(r'\.', '', regex=True).str.lower()
@@ -75,10 +76,37 @@ print(df_exploded.shape[0])
 print(df_exploded_correct.shape[0])
 print(df_exploded_wrong.shape[0])
 
+grouped_means = df_exploded.groupby(['rel_level', 'noise_level', 'condition', 'layer'])['attn_ratio'].mean().reset_index()
+grouped_means_correct = df_exploded_correct.groupby(['rel_level', 'noise_level', 'condition', 'layer'])['attn_ratio'].mean().reset_index()
+grouped_means_wrong = df_exploded_wrong.groupby(['rel_level', 'noise_level', 'condition', 'layer'])['attn_ratio'].mean().reset_index()
+
+grouped_layers = df_exploded.groupby(['rel_level', 'noise_level', 'condition'])['attn_ratio'].mean().reset_index()
+grouped_layers_correct = df_exploded_correct.groupby(['rel_level', 'noise_level', 'condition'])['attn_ratio'].mean().reset_index()
+grouped_layers_wrong = df_exploded_wrong.groupby(['rel_level', 'noise_level', 'condition'])['attn_ratio'].mean().reset_index()
+
+# Merge the datasets
+merged_layers = grouped_layers.merge(
+    grouped_layers_correct, 
+    on=['noise_level', 'rel_level', 'condition'], 
+    suffixes=('_all', '_correct'),
+    how='outer'  # Ensures all data is included
+).merge(
+    grouped_layers_wrong, 
+    on=['noise_level', 'rel_level', 'condition'], 
+    suffixes=('_correct', '_wrong'),
+    how='outer'
+)
+
+# Rename columns explicitly to avoid naming issues
+merged_layers.rename(columns={'attn_ratio': 'attn_ratio_wrong'}, inplace=True)
+
+
+#%%
+merged_layers.round(3)
 #%%
 # --- Compute mean attention ratio per layer grouped by condition ---
-grouped_means = df_exploded_correct.groupby(['condition', 'noise_level', 'rel_level', 'layer'])['attn_ratio'].mean().reset_index()
-
+grouped_means = grouped_means_wrong
+y_lim = 0.36
 # --- Filter and plot results for a specific noise level ---
 noise_level_filter = 0.0  # Set noise level for filtering
 filtered_data = grouped_means[grouped_means['noise_level'] == noise_level_filter]
@@ -92,6 +120,7 @@ for (condition, rel_level), sub_df in filtered_data.groupby(['condition', 'rel_l
 
 plt.xlabel('Layer')
 plt.ylabel('Mean Attention Ratio')
+plt.ylim(0, y_lim)
 plt.title(f'Mean Attention Ratio per Layer (Noise = {noise_level_filter})')
 plt.legend()
 plt.grid()
@@ -107,6 +136,7 @@ for (condition, rel_level), sub_df in filtered_data.groupby(['condition', 'rel_l
 
 plt.xlabel('Layer')
 plt.ylabel('Mean Attention Ratio')
+plt.ylim(0, y_lim)
 plt.title(f'Mean Attention Ratio per Layer (Noise = {noise_level_filter})')
 plt.legend()
 plt.grid()
@@ -122,6 +152,7 @@ for (condition, rel_level), sub_df in filtered_data.groupby(['condition', 'rel_l
 
 plt.xlabel('Layer')
 plt.ylabel('Mean Attention Ratio')
+plt.ylim(0, y_lim)
 plt.title(f'Mean Attention Ratio per Layer (Noise = {noise_level_filter})')
 plt.legend()
 plt.grid()
