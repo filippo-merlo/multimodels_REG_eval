@@ -37,13 +37,14 @@ desired_models = [
     'Salesforce/xgen-mm-phi3-mini-instruct-r-v1',
     'llava-hf/llava-onevision-qwen2-0.5b-si-hf',
     'Salesforce/xgen-mm-phi3-mini-instruct-singleimg-r-v1.5',
-    #'Qwen/Qwen2-VL-2B-Instruct-GPTQ-Int8',
+    'Qwen/Qwen2-VL-2B-Instruct-GPTQ-Int8',
     'microsoft/kosmos-2-patch14-224'
 ]
 
 # Filter DataFrame to include only the selected models
 df = df[df['model_name'].isin(desired_models)]
-
+df
+#%%
 # --- Filter dataset based on selected image ---
 filtered_images_folder_path = '/Users/filippomerlo/Desktop/manually_filtered_images'
 # Get all image filenames in the folder (only valid image formats)
