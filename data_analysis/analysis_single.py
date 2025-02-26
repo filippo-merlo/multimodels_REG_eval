@@ -24,7 +24,7 @@ desired_models = [
     'Salesforce/xgen-mm-phi3-mini-instruct-r-v1',
     'llava-hf/llava-onevision-qwen2-0.5b-si-hf',
     'Salesforce/xgen-mm-phi3-mini-instruct-singleimg-r-v1.5',
-    #'Qwen/Qwen2-VL-2B-Instruct-GPTQ-Int8',
+    'Qwen/Qwen2-VL-2B-Instruct-GPTQ-Int8',
     'microsoft/kosmos-2-patch14-224'
 ]
 
@@ -43,6 +43,12 @@ df_filtered = df[df['image_name'].apply(lambda x: x.split('_')[0] in image_filen
 
 
 # compute metrics
+# Soft Accuracy
+df['soft_accuracy'] = (df['long_caption_text_similarity_scores'] >= 0.9).astype(int) #!!!
+soft_accuracy_by_combined = df.groupby(['Rel. Level', 'noise_level', 'Noise Area'])[
+    ['soft_accuracy']
+].mean().reset_index()
+
 # Full Dataset
 # Hard Accuracy
 from Levenshtein import ratio
@@ -58,12 +64,6 @@ print(max_length)
 df_hard_accuracy = df[df['output_clean'].apply(len) <= max_length] #!!!
 hard_accuracy_by_combined = df_hard_accuracy.groupby(['Rel. Level', 'noise_level', 'Noise Area'])[
     ['hard_accuracy']
-].mean().reset_index()
-
-# Soft Accuracy
-df['soft_accuracy'] = (df['long_caption_text_similarity_scores'] >= 0.9).astype(int) #!!!
-soft_accuracy_by_combined = df.groupby(['Rel. Level', 'noise_level', 'Noise Area'])[
-    ['soft_accuracy']
 ].mean().reset_index()
 
 # Filtered Dataset
@@ -85,6 +85,27 @@ df_filtered['soft_accuracy'] = (df_filtered['long_caption_text_similarity_scores
 soft_accuracy_filtered_by_combined = df_filtered.groupby(['Rel. Level', 'noise_level', 'Noise Area'])[
     ['soft_accuracy']
 ].mean().reset_index()
+
+#%%
+df.columns
+#%%
+df_hard_accuracy
+df_to_print = df_hard_accuracy.groupby(['model_name', 'Rel. Level', 'noise_level', 'Noise Area'])[['long_caption_scores', 'long_caption_text_similarity_scores', 'hard_accuracy', 'soft_accuracy']].mean().reset_index()
+df_to_print.columns = ['model_name', 'Rel. Level', 'Noise Level', 'Noise Area',
+       'refCLIPScore', 'Text-Based Similarity',
+       'Hard Acc.', 'Soft Acc.']
+#%%
+for model, group in df_to_print.groupby('model_name'):
+    print('\n')
+    # Optionally drop the 'model_name' column if it's redundant
+    print("\\begin{table}[h]")
+    print("\hspace{-1.5cm}")
+    print(group.drop(columns='model_name').to_latex(index=False, float_format="%.3f"))
+    print("\caption{Results for model: " + model + "}")
+    print("\end{table}")
+
+#%%
+
 
 
 #%%
