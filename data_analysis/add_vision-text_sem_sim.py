@@ -85,3 +85,5 @@ df['scene_output_similarity'] = [compute_cosine_similarity(row) for row in tqdm(
 df
 # Save the updated DataFrame back to CSV
 df.to_csv(os.path.join(folder_path, 'updated_complete_output.csv'), index=False)
+#%%
+df

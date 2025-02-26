@@ -7,23 +7,10 @@ import scipy.stats as stats
 from pprint import pprint
 
 # Specify the folder containing your CSV files
-folder_path = '/Users/filippomerlo/Desktop/output'
+file_path = '/Users/filippomerlo/Desktop/output/updated_complete_output.csv'
 
-# Get a list of all CSV files in the specified folder
-csv_files = [file for file in os.listdir(folder_path) if file.endswith('.csv')]
-
-# Initialize an empty list to store DataFrames
-dataframes = []
-
-# Loop through each CSV file and read it into a pandas DataFrame
-for file in csv_files:
-    file_path = os.path.join(folder_path, file)
-    df = pd.read_csv(file_path)
-    dataframes.append(df)
-
-# Concatenate all DataFrames into one combined DataFrame
-combined_df = pd.concat(dataframes, ignore_index=True)
-df = combined_df.copy()
+# Read the CSV file into a DataFrame
+df = pd.read_csv(file_path)
 
 # Filter out rows where 'target' is "nothing"
 df = df[df['target'] != "nothing"]
@@ -37,7 +24,7 @@ desired_models = [
     'Salesforce/xgen-mm-phi3-mini-instruct-r-v1',
     'llava-hf/llava-onevision-qwen2-0.5b-si-hf',
     'Salesforce/xgen-mm-phi3-mini-instruct-singleimg-r-v1.5',
-    'Qwen/Qwen2-VL-2B-Instruct-GPTQ-Int8',
+    #'Qwen/Qwen2-VL-2B-Instruct-GPTQ-Int8',
     'microsoft/kosmos-2-patch14-224'
 ]
 
@@ -99,8 +86,118 @@ soft_accuracy_filtered_by_combined = df_filtered.groupby(['Rel. Level', 'noise_l
     ['soft_accuracy']
 ].mean().reset_index()
 
+
+#%%
+# Hard Accuracy
+df_hard_accuracy['correct_hard'] = df_hard_accuracy['hard_accuracy'] == 1
+hard_accuracy_similarity = df_hard_accuracy.groupby(
+    ['Noise Area', 'noise_level', 'Rel. Level', 'correct_hard']
+)[['scene_output_similarity']].mean().unstack()
+#)[['long_caption_text_similarity_scores', 'scene_output_similarity']].mean().unstack()
+
+
+# Renaming columns for clarity
+#hard_accuracy_similarity.columns = ['Target/Out. Incorrect', 'Target/Out. Correct', 'Scene/Out. Incorrect', 'Scene/Out. Correct']
+#hard_accuracy_similarity = hard_accuracy_similarity[['Target/Out. Correct', 'Target/Out. Incorrect', 'Scene/Out. Correct', 'Scene/Out. Incorrect']]
+hard_accuracy_similarity.columns = ['Incorrect', 'Correct']
+hard_accuracy_similarity = hard_accuracy_similarity[['Correct', 'Incorrect']]
+
+
+merged_accuracy_similarity = hard_accuracy_similarity.reset_index()
+merged_accuracy_similarity = merged_accuracy_similarity[
+    ~((merged_accuracy_similarity['noise_level'] == 0.0) & 
+      (merged_accuracy_similarity['Noise Area'] != 'target'))
+]
+merged_accuracy_similarity['Noise Area'][
+    ((merged_accuracy_similarity['noise_level'] == 0.0) & 
+      (merged_accuracy_similarity['Noise Area'] == 'target'))
+] = '--'
+
+# Define the desired order
+desired_order_area = ['--', 'target', 'context', 'all']
+desired_order_level = [0.0, 0.5, 1.0]
+desired_order_rel = ['original', 'middle', 'low']
+
+# Convert column to categorical with the specified order
+merged_accuracy_similarity['Noise Area'] = pd.Categorical(merged_accuracy_similarity['Noise Area'], categories=desired_order_area, ordered=True)
+merged_accuracy_similarity['noise_level'] = pd.Categorical(merged_accuracy_similarity['noise_level'], categories=desired_order_level, ordered=True)
+merged_accuracy_similarity['Rel. Level'] = pd.Categorical(merged_accuracy_similarity['Rel. Level'], categories=desired_order_rel, ordered=True)
+
+
+merged_accuracy_similarity = merged_accuracy_similarity.set_index(['Noise Area', 'noise_level', 'Rel. Level'])
+merged_accuracy_similarity.round(3)
+
 #%%
 
+# Reset index to have all categories as columns for easier plotting
+merged_accuracy_similarity = merged_accuracy_similarity.reset_index()
+
+#merged_accuracy_similarity = merged_accuracy_similarity[merged_accuracy_similarity['noise_level'] != 1.0]
+merged_accuracy_similarity
+#%%
+
+
+# Melt the dataframe for seaborn compatibility
+df_melted = merged_accuracy_similarity.melt(
+    id_vars=['Noise Area', 'noise_level', 'Rel. Level'],
+    var_name='Accuracy Type',
+    value_name='Scene Output Similarity'
+)
+
+import matplotlib.ticker as mticker
+
+# Plot using seaborn with noise area, noise level, and relative level
+plt.figure(figsize=(14, 8))
+g = sns.catplot(
+    data=df_melted,
+    x='noise_level',
+    y='Scene Output Similarity',
+    hue='Accuracy Type',
+    col='Noise Area',
+    row='Rel. Level',
+    kind='bar',
+    height=4,
+    aspect=1.2,
+    #palette='rocket',
+    sharex=False  # Disable shared x-axis
+)
+
+# Customize the plotm
+for idx, ax in enumerate(g.axes.flat):
+    ax.set_ylim(0.77, 0.86)
+
+    if idx in [0,4,8]:
+        ax.set_xticks([0])  
+        ax.margins(x=0.9)
+    else:
+        ax.set_xticks([1,2])
+        ax.margins(x=0.1)
+
+    # Increase font sizes for axis labels and tick labels
+    ax.xaxis.label.set_size(16)  # X-axis label size
+    ax.yaxis.label.set_size(16)  # Y-axis label size
+    ax.tick_params(axis='both', labelsize=14)  # Tick labels size
+    ax.title.set_size(14)  # Subplot title size
+    # Add grid lines
+    ax.grid(True, axis='y', linestyle='--', alpha=0.6)  # Dashed grid lines with transparency
+
+g.set_axis_labels("Noise Level", "Semantic Similarity")
+plt.subplots_adjust(top=0.9)
+plt.suptitle('Scene-Output Text Based Semantic Similarity', fontsize=24)
+
+# Increase legend font size
+legend = g._legend
+if legend:
+    plt.setp(legend.get_texts(), fontsize=18)  # Increase legend text size
+    legend.set_title("", prop={'size': 20})  # Increase legend title size
+
+    # Move the legend to the right and rotate it vertically
+    legend.set_bbox_to_anchor((1.06, 0.5))  # Moves it outside the plot, center right
+
+# Show plot
+plt.show()
+
+#%%
 # Merge datasets, hard accuracy
 merged_hard_accuracy = hard_accuracy_by_combined.merge(
     hard_accuracy_filtered_by_combined, 
@@ -117,7 +214,8 @@ merged_soft_accuracy = soft_accuracy_by_combined.merge(
     how='outer'  # Ensures all data is included
 ).round(3)
 
-merged_soft_accuracy
+merged_hard_accuracy
+#merged_soft_accuracy
 #%%
 # Group data by 'rel_level', 'noise_level', and 'condition', then compute mean scores
 semantic_by_combined = df.groupby(['Rel. Level', 'noise_level', 'Noise Area'])[
@@ -137,36 +235,7 @@ merged_semantic = semantic_by_combined.merge(
     how='outer'  # Ensures all data is included
 ).round(3)
 
-#%% VISUALIZE
-# Filter dataset to only include rows with noise_level == 0
-df_zero_noise = df[df['noise_level'] == 0]
-
-# Group data by 'rel_level' and 'condition', then compute mean scores
-performance_by_zero_noise = df_zero_noise.groupby(['Rel. Level', 'Noise Area', 'model_name'])[
-    ['scores', 'text_similarity_scores', 'long_caption_scores', 'long_caption_text_similarity_scores']
-].median().reset_index()
-
-# List of scores to visualize
-scores = ['long_caption_scores']
-
-# Generate bar plots for each score metric at noise level 0
-for score in scores:
-    plt.figure(figsize=(14, 7))
-    sns.barplot(
-        data=performance_by_zero_noise,
-        x='Rel. Level',
-        y=score,
-        hue='model_name',
-        palette='tab10'
-    )
-    plt.ylim(0.5,0.8)
-    plt.title(f'RefCLIPScore at Noise Level 0 by Relatedness Level')
-    plt.xlabel('Relatedness Level')
-    plt.ylabel('RefCLIPScore')
-    plt.legend(title='Model', bbox_to_anchor=(1.05, 1), loc='upper left')
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    plt.show()
+merged_semantic
 
 #%% Semantic Similarity Analysis
 
@@ -225,5 +294,37 @@ for accuracy in accuracies:
     plt.xticks([0,0.5,1])
     plt.ylabel(f'{accuracy.replace("_", " ").capitalize()}')
     plt.legend(title='Noise Area / Rel Level', bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.tight_layout()
+    plt.show()
+
+
+#%% VISUALIZE
+# Filter dataset to only include rows with noise_level == 0
+df_zero_noise = df[df['noise_level'] == 0]
+
+# Group data by 'rel_level' and 'condition', then compute mean scores
+performance_by_zero_noise = df_zero_noise.groupby(['Rel. Level', 'Noise Area', 'model_name'])[
+    ['scores', 'text_similarity_scores', 'long_caption_scores', 'long_caption_text_similarity_scores']
+].median().reset_index()
+
+# List of scores to visualize
+scores = ['long_caption_scores']
+
+# Generate bar plots for each score metric at noise level 0
+for score in scores:
+    plt.figure(figsize=(14, 7))
+    sns.barplot(
+        data=performance_by_zero_noise,
+        x='Rel. Level',
+        y=score,
+        hue='model_name',
+        palette='tab10'
+    )
+    plt.ylim(0.5,0.8)
+    plt.title(f'RefCLIPScore at Noise Level 0 by Relatedness Level')
+    plt.xlabel('Relatedness Level')
+    plt.ylabel('RefCLIPScore')
+    plt.legend(title='Model', bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.xticks(rotation=45)
     plt.tight_layout()
     plt.show()

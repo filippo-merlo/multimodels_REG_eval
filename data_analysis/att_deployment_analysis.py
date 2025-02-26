@@ -107,6 +107,7 @@ merged_layers.round(3)
 # --- Compute mean attention ratio per layer grouped by condition ---
 grouped_means = grouped_means_wrong
 y_lim = 0.36
+
 # --- Filter and plot results for a specific noise level ---
 noise_level_filter = 0.0  # Set noise level for filtering
 filtered_data = grouped_means[grouped_means['noise_level'] == noise_level_filter]
