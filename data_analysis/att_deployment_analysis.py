@@ -12,7 +12,9 @@ tqdm.pandas()
 separator = "\n\n##################################################\n##################################################\n\n"
 
 # --- Load the data ---
-file_path = '/Users/filippomerlo/Desktop/attention_deployment/results_att_deployment.csv'  # Update with your actual file path
+file_path = '/Users/filippomerlo/Desktop/attention_deployment/results_att_deployment_hight_sim.csv'  # Update with your actual file path
+#file_path = '/Users/filippomerlo/Desktop/attention_deployment/results_att_deployment.csv'  # Update with your actual file path
+
 df = pd.read_csv(file_path)
 df['rel_level'] = df['rel_level'].fillna('original')
 df['condition'] = df['condition'].str.replace('_noise', '', regex=True)

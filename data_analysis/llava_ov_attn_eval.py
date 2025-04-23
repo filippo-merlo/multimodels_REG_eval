@@ -16,7 +16,6 @@ import gc
 from tqdm import tqdm
 
 import numpy as np
-import matplotlib.pyplot as plt
 # %matplotlib inline
 import cv2
 from PIL import Image
@@ -29,6 +28,7 @@ import torch
 import torch.nn.functional as F
 import pandas as pd
 import math
+
 
 from llava.constants import IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
 from llava.conversation import conv_templates, SeparatorStyle
@@ -248,13 +248,13 @@ def show_mask_on_image(img, mask):
 
 import os
 # Set CUDA_VISIBLE_DEVICES to use GPU 1
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+#os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 # ===> specify the model path
 pretrained = "lmms-lab/llava-onevision-qwen2-0.5b-si"
 model_name = "llava_qwen"
 device = "cuda"
-cache_dir = '/mnt/cimec-storage6/shared/hf_lvlms'
+cache_dir = '/home/fmerlo/data/sceneregstorage/models/hf_llms_checkpoints'
 device_map = "auto"
 
 # load the model
@@ -285,15 +285,15 @@ def get_images_names_path(images_path):
             images_n_p[filename] = os.path.join(images_path, filename)
     return images_n_p
 
-images_path = "/mnt/cimec-storage6/users/filippo.merlo/sceneREG_data/resized_images"
-dataset_path = "/mnt/cimec-storage6/users/filippo.merlo/sceneREG_data/final_dataset_resized.json"
+images_path = "/home/fmerlo/data/sceneregstorage/COOCO_dataset/COOCO_images"
+dataset_path = "/home/fmerlo/data/sceneregstorage/COOCO_dataset/COOCO_data_new.json"
 # Specify the directory
-output_dir = "/mnt/cimec-storage6/users/filippo.merlo/sceneREG_data/attention_deployment"
+output_dir = "/home/fmerlo/data/sceneregstorage/sceneREG_data/attention_deployment"
 os.makedirs(output_dir, exist_ok=True)
 
 # whole dataset avg visual attention matrix
 
-avg_vis_attn_matrix_path = '/mnt/cimec-storage6/users/filippo.merlo/sceneREG_data/attention_deployment/vis_attn_matrix_average.pt'
+avg_vis_attn_matrix_path = '/home/fmerlo/data/sceneregstorage/sceneREG_data/attention_deployment/vis_attn_matrix_average.pt'
 avg_vis_attn_matrix = torch.load(avg_vis_attn_matrix_path)
 
 data = load_dataset(dataset_path)
@@ -321,9 +321,9 @@ for condition in tqdm(conditions, desc="conditions"):
     for image_name, image_path  in tqdm(list(images_n_p.items()), desc="images"):
       if data[image_name]['excluded']:
         continue
- 
-      bbox = data[image_name]['target_bbox']
 
+      bbox = data[image_name]['target_bbox']
+      
       if '_original.jpg' in image_name:
           target = data[image_name]['target'].replace('_', ' ')
 
@@ -407,6 +407,7 @@ for condition in tqdm(conditions, desc="conditions"):
             cur[1:, 0] = 0.
             cur[1:] = cur[1:] / cur[1:].sum(-1, keepdim=True)
             aggregated_prompt_attention.append(cur)
+
         aggregated_prompt_attention = torch.stack(aggregated_prompt_attention).mean(dim=0)
 
         # llm_attn_matrix will be of torch.Size([N, N])
@@ -419,9 +420,21 @@ for condition in tqdm(conditions, desc="conditions"):
         del aggregated_prompt_attention
 
         # identify length or index of tokens
-        input_token_len = model.get_vision_tower().num_patches + len(input_ids[0]) - 1 # -1 for the <image> token
+        #input_token_len = model.get_vision_tower().num_patches + len(input_ids[0]) - 1 # -1 for the <image> token
+        #vision_token_start = len(tokenizer(prompt.split("<image>")[0], return_tensors='pt')["input_ids"][0])
+        #vision_token_end = vision_token_start + model.get_vision_tower().num_patches
+        
+        text_token_len = len(input_ids[0]) - 1  # Excluding the <image> token
+        input_token_len = int(outputs["attentions"][0][0][0][0][0].size(0)) - 1  # First output token count
+        vision_token_len = int(outputs["attentions"][0][0][0][0][0].size(0)) - text_token_len  # Extract vision token count
+        first_patch_len = 729  # Length of the first vision patch (assumed)
+
+        # Identify vision token start and end indices
         vision_token_start = len(tokenizer(prompt.split("<image>")[0], return_tensors='pt')["input_ids"][0])
-        vision_token_end = vision_token_start + model.get_vision_tower().num_patches
+        vision_token_end = vision_token_start + vision_token_len
+        first_patch_end = vision_token_start + first_patch_len
+
+
         output_token_len = len(outputs["sequences"][0])
         output_token_start = input_token_len
         output_token_end = input_token_len + output_token_len
@@ -473,7 +486,7 @@ for condition in tqdm(conditions, desc="conditions"):
             for i, token_id in enumerate(output_token_inds):
                 
                 # Compute attention weights for vision tokens for the current token
-                attn_weights_over_vis_tokens = llm_attn_matrix[token_id][vision_token_start:vision_token_end]
+                attn_weights_over_vis_tokens = llm_attn_matrix[token_id][vision_token_start:first_patch_end]
                 attn_weights_over_vis_tokens = attn_weights_over_vis_tokens / attn_weights_over_vis_tokens.sum()
 
                 attn_over_image = []
@@ -599,7 +612,7 @@ for condition in tqdm(conditions, desc="conditions"):
     results_df = pd.DataFrame(results_list)
 
     # Define the file path
-    output_file = os.path.join(output_dir, "results_att_deployment.csv")
+    output_file = os.path.join(output_dir, "results_att_deployment_last.csv")
 
     # Save the DataFrame to a CSV file
     results_df.to_csv(output_file, index=False)
