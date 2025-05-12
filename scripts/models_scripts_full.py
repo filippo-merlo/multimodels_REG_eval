@@ -7,7 +7,7 @@ import os
 def load_model(model_name, device, model_dir, cache_dir):
     import torch
     # BLIP-3
-    if model_name == 'Salesforce/xgen-mm-phi3-mini-instruct-singleimg-r-v1.5':
+    if model_name == 'Salesforce/xgen-mm-phi3-mini-instruct-interleave-r-v1.5':
         from transformers import AutoModelForVision2Seq, AutoTokenizer, AutoImageProcessor
         model = AutoModelForVision2Seq.from_pretrained(model_name, trust_remote_code=True, cache_dir=model_dir)
         tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True, use_fast=False, legacy=False, cache_dir=cache_dir)
