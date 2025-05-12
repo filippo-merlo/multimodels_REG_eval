@@ -7,11 +7,11 @@ from scripts.data import load_dataset, get_images_names_path
 # model list 
 model_list = [
     'allenai/Molmo-7B-D-0924',
-    #'Salesforce/xgen-mm-phi3-mini-instruct-singleimg-r-v1.5',
-    #'microsoft/kosmos-2-patch14-224',
-    #'Qwen/Qwen2-VL-7B-Instruct',
-    #'llava-hf/llava-onevision-qwen2-0.5b-si-hf',
-    #'llava-hf/llava-onevision-qwen2-7b-ov-hf',
+    'Salesforce/xgen-mm-phi3-mini-instruct-singleimg-r-v1.5',
+    'microsoft/kosmos-2-patch14-224',
+    'Qwen/Qwen2-VL-7B-Instruct',
+    'llava-hf/llava-onevision-qwen2-0.5b-si-hf',
+    'llava-hf/llava-onevision-qwen2-7b-ov-hf',
 ]
 
 device = "cuda"  # Specify GPU device

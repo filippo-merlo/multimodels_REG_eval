@@ -1,16 +1,16 @@
 #%%
 import os 
 
-data_dir_path = '/mnt/cimec-storage6/users/filippo.merlo/sceneREG_data'
+data_dir_path = '/home/fmerlo/data/sceneregstorage'
 
 # Path of the dictionary with the data 
-dataset_path = os.path.join(data_dir_path, 'final_dataset_resized.json')
+dataset_path = os.path.join(data_dir_path, 'COOCO_dataset/COOCO_data_new.json')
 
 # Path of the folder with the images
-images_path = os.path.join(data_dir_path, 'resized_images')
+images_path = os.path.join(data_dir_path, 'COOCO_dataset/COOCO_images')
 
-model_dir = '/mnt/cimec-storage6/shared/hf_lvlms'
-cache_dir = '/mnt/cimec-storage6/users/filippo.merlo/cache_regScene_eval'
-output_dir = '/mnt/cimec-storage6/users/filippo.merlo/sceneREG_data/output'
+model_dir = '/home/fmerlo/data/sceneregstorage/models/hf_llms_checkpoints'
+cache_dir = '/home/fmerlo/data/sceneregstorage/cache_regScene_eval'
+output_dir = '/home/fmerlo/data/sceneregstorage/sceneREG_data/output_final'
 
-temporary_save_dir = '/mnt/cimec-storage6/users/filippo.merlo/sceneREG_data/temporary_save'
+temporary_save_dir = '/home/fmerlo/data/sceneregstorage/sceneREG_data/temporary_save'
