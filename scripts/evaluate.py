@@ -35,7 +35,9 @@ def evaluate(model_name, data, images_n_p, device):
     for condition in conditions:
         for noise_level in noise_levels:
             for image_name, image_path in list(images_n_p.items()):
-                try:
+                try:    
+                    if noise_level == 0.0 and condition != 'target_noise':
+                        continue
                 
                     # Exclude images that has been filtered out by the LLAVA filter
                     if data[image_name]['excluded']:
