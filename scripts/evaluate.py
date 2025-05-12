@@ -1,7 +1,7 @@
 # evaluate.py
 import torch
 import json
-from models_scripts import load_model  # Assuming a load_model function is defined to load your model
+from models_scripts_full import load_model  # Assuming a load_model function is defined to load your model
 from data import load_dataset, get_images_names_path
 from utils import log_metrics, add_grey_background_and_rescale_bbox, add_gaussian_noise_in_bbox, add_gaussian_noise_outside_bbox, get_image_patch
 from config import *

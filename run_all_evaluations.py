@@ -6,12 +6,12 @@ from scripts.data import load_dataset, get_images_names_path
 
 # model list 
 model_list = [
-    #'cyan2k/molmo-7B-O-bnb-4bit',
-    'Salesforce/xgen-mm-phi3-mini-instruct-singleimg-r-v1.5',
-    'Salesforce/xgen-mm-phi3-mini-instruct-r-v1',
-    'microsoft/kosmos-2-patch14-224',
-    'Qwen/Qwen2-VL-2B-Instruct-GPTQ-Int8',
-    'llava-hf/llava-onevision-qwen2-0.5b-si-hf',
+    'allenai/Molmo-7B-D-0924',
+    #'Salesforce/xgen-mm-phi3-mini-instruct-singleimg-r-v1.5',
+    #'microsoft/kosmos-2-patch14-224',
+    #'Qwen/Qwen2-VL-7B-Instruct',
+    #'llava-hf/llava-onevision-qwen2-0.5b-si-hf',
+    #'llava-hf/llava-onevision-qwen2-7b-ov-hf',
 ]
 
 device = "cuda"  # Specify GPU device

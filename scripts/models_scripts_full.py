@@ -99,25 +99,29 @@ def load_model(model_name, device, model_dir, cache_dir):
         
         return model, generate
 
-    elif model_name == 'cyan2k/molmo-7B-O-bnb-4bit':
-        from transformers import (
-            AutoModelForCausalLM,
-            AutoProcessor,
-            GenerationConfig,
-        )
+    elif model_name == 'allenai/Molmo-7B-D-0924':
+        from transformers import AutoModelForCausalLM, AutoProcessor, GenerationConfig
         from PIL import Image
 
         # Load the processor and model
         arguments = {"device_map": "auto", "torch_dtype": "auto", "trust_remote_code": True}
+        # load the processor
         processor = AutoProcessor.from_pretrained(
-            model_name,
-            **arguments, 
-            cache_dir=cache_dir)
-        
+            'allenai/Molmo-7B-D-0924',
+            trust_remote_code=True,
+            torch_dtype='auto',
+            device_map='auto',
+            cache_dir=cache_dir
+        )
+
+        # load the model
         model = AutoModelForCausalLM.from_pretrained(
-            model_name, 
-            **arguments,
-            cache_dir=model_dir)
+            'allenai/Molmo-7B-D-0924',
+            trust_remote_code=True,
+            torch_dtype='auto',
+            device_map='auto',
+            cache_dir=model_dir
+        )
         
         model.eval()
 
@@ -154,7 +158,7 @@ def load_model(model_name, device, model_dir, cache_dir):
 
         return model, generate
     
-    elif model_name == "Qwen/Qwen2-VL-2B-Instruct-GPTQ-Int8":
+    elif model_name == "Qwen/Qwen2-VL-7B-Instruct":
         from transformers import Qwen2VLForConditionalGeneration, AutoTokenizer, AutoProcessor
         from qwen_vl_utils import process_vision_info
 
@@ -234,72 +238,58 @@ def load_model(model_name, device, model_dir, cache_dir):
  
         return model, generate
     
-    elif model_name == "THUDM/cogvlm2-llama3-chat-19B-int4":
-        import torch
-        from PIL import Image
-        from transformers import AutoModelForCausalLM, AutoTokenizer
-
-        TORCH_TYPE = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.get_device_capability()[
-            0] >= 8 else torch.float16
-
-        tokenizer = AutoTokenizer.from_pretrained(
-            model_name,
-            trust_remote_code=True,
-            cache_dir=cache_dir,
-        )
-        model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            torch_dtype=TORCH_TYPE,
-            trust_remote_code=True,
-            low_cpu_mem_usage=True,
-            cache_dir=model_dir,
-            device_map='auto',
-        ).eval() # Load the model and set it to evaluation mode
-
-        def generate(model, image, bbox):
-
-            x1, y1, x2, y2 = normalize_box_cogvlm(convert_box(bbox))
-            
-            question = f"What is the object in this part of the image [{x1}, {y1}, {x2}, {y2}]? Answer with the object's name only. No extra text."
-            prompt  = f"A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions. USER: {question} ASSISTANT:"
-
-            input_by_model = model.build_conversation_input_ids(
-                tokenizer,
-                query=prompt,
-                images=[image],
-                history = [],
-                template_version='chat'
-            )
-
-            inputs = {
-                'input_ids': input_by_model['input_ids'].unsqueeze(0).to(model.device),
-                'token_type_ids': input_by_model['token_type_ids'].unsqueeze(0).to(model.device),
-                'attention_mask': input_by_model['attention_mask'].unsqueeze(0).to(model.device),
-                'images': [[input_by_model['images'][0].to(model.device).to(TORCH_TYPE)]] if image is not None else None,
-            }
-
-            gen_kwargs = {
-                "max_new_tokens": 2048,
-                "pad_token_id": 128002,
-            }
-
-            with torch.no_grad():
-                outputs = model.generate(**inputs, **gen_kwargs)
-                outputs = outputs[:, inputs['input_ids'].shape[1]:]
-                response = tokenizer.decode(outputs[0])
-                response = response.split("<|end_of_text|>")[0]
-            
-            return response    
-            
-        
-        return model, generate
-
     elif model_name == "llava-hf/llava-onevision-qwen2-0.5b-si-hf":
         from PIL import Image
         import torch
         from transformers import AutoProcessor, LlavaOnevisionForConditionalGeneration
 
         model_id = "llava-hf/llava-onevision-qwen2-0.5b-si-hf"
+        model = LlavaOnevisionForConditionalGeneration.from_pretrained(
+            model_id, 
+            torch_dtype=torch.float16, 
+            low_cpu_mem_usage=True, 
+            cache_dir=model_dir,
+            device_map='auto',
+        ).eval()
+
+        processor = AutoProcessor.from_pretrained(model_id, cache_dir=cache_dir)
+
+        def generate(model, image, bbox):
+            # Define a chat history and use `apply_chat_template` to get correctly formatted prompt
+            # Each value in "content" has to be a list of dicts with types ("text", "image") 
+            W = image.size[0]
+            H = image.size[1]
+            normalized_bbox = normalize_box(convert_box(bbox), W, H)
+            x1, y1, x2, y2 = normalized_bbox
+            conversation = [
+                {
+
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": f"What is the object in this part of the image [{x1}, {y1}, {x2}, {y2}]? Answer with the object's name only. No extra text."},
+                    {"type": "image"},
+                    ],
+                },
+            ]
+            prompt = processor.apply_chat_template(conversation, add_generation_prompt=True)
+
+            raw_image = image
+            inputs = processor(images=raw_image, text=prompt, return_tensors='pt').to(0, torch.float16)
+            #decoded_input = processor.decode(inputs['input_ids'][0])
+          
+
+            output = model.generate(**inputs, max_new_tokens=100, do_sample=False)
+            output_text = processor.decode(output[0][2:], skip_special_tokens=True)
+
+            return output_text.replace(f"What is the object in this part of the image [{x1}, {y1}, {x2}, {y2}]? Answer with the object's name only. No extra text.assistant\n",'').replace('\n','')
+        return model, generate
+    
+    elif model_name == "llava-hf/llava-onevision-qwen2-7b-ov-hf":
+        from PIL import Image
+        import torch
+        from transformers import AutoProcessor, LlavaOnevisionForConditionalGeneration
+
+        model_id = "llava-hf/llava-onevision-qwen2-7b-ov-hf"
         model = LlavaOnevisionForConditionalGeneration.from_pretrained(
             model_id, 
             torch_dtype=torch.float16, 
