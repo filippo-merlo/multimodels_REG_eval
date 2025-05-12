@@ -249,14 +249,13 @@ if __name__ == "__main__":
     parser.add_argument("--model_name", type=str, help="The name of the model to evaluate")
     parser.add_argument("--device", type=str, help="The device to run evaluation on, e.g., 'cuda:0'")
     args = parser.parse_args()
-
-    # python evaluate.py --model_name Salesforce/xgen-mm-phi3-mini-instruct-singleimg-r-v1.5 --device cuda
-    # python evaluate.py --model_name Salesforce/xgen-mm-phi3-mini-instruct-r-v1 --device cuda
-    # python evaluate.py --model_name 'cyan2k/molmo-7B-O-bnb-4bit' --device cuda
-    # python evaluate.py --model_name 'Qwen/Qwen2-VL-2B-Instruct-GPTQ-Int8' --device cuda 
-    # python evaluate.py --model_name "llava-hf/llava-onevision-qwen2-0.5b-si-hf" --device cuda 
+    
+    # python evaluate.py --model_name 'allenai/Molmo-7B-D-0924' --device cuda
+    # python evaluate.py --model_name 'Salesforce/xgen-mm-phi3-mini-instruct-singleimg-r-v1.5' --device cuda
     # python evaluate.py --model_name 'microsoft/kosmos-2-patch14-224' --device cuda
-
+    # python evaluate.py --model_name 'Qwen/Qwen2-VL-7B-Instruct' --device cuda
+    # python evaluate.py --model_name 'llava-hf/llava-onevision-qwen2-0.5b-si-hf' --device cuda
+    # python evaluate.py --model_name 'llava-hf/llava-onevision-qwen2-7b-ov-hf' --device cuda
 
     # Load data
     data = load_dataset(dataset_path)
