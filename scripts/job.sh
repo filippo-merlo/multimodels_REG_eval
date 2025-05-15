@@ -6,8 +6,8 @@
 #SBATCH --cpus-per-task=4           # CPU cores per task
 #SBATCH --mem=32G                   # Memory per node
 #SBATCH --time=01:00:00             # Time limit (hh:mm:ss)
-#SBATCH --partition=gpu         # Partition (queue) name
-#SBATCH --gres=gpu:2              # Request GPU (if needed)
+#SBATCH --partition=gpua100     # Partition (queue) name
+#SBATCH --gres=gpu:1            # Request GPU (if needed)
 
 # Load modules if needed
 # Initialize Conda

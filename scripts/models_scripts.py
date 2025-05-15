@@ -174,7 +174,7 @@ def load_model(model_name, device, model_dir, cache_dir):
         from PIL import Image
 
         # Load the processor and model
-        arguments = {"device_map": "auto", "torch_dtype": "auto", "trust_remote_code": True}
+        arguments = {"device_map": "auto", "torch_dtype": torch.bfloat16, "trust_remote_code": True}
         processor = AutoProcessor.from_pretrained(
             model_name,
             **arguments, 
@@ -227,7 +227,7 @@ def load_model(model_name, device, model_dir, cache_dir):
         # default: Load the model on the available device(s)
         model = Qwen2VLForConditionalGeneration.from_pretrained(
             model_name, 
-            torch_dtype="auto", 
+            torch_dtype=torch.bfloat16, 
             device_map="auto",
             cache_dir=model_dir,
         )
@@ -305,9 +305,6 @@ def load_model(model_name, device, model_dir, cache_dir):
         from PIL import Image
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
-        TORCH_TYPE = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.get_device_capability()[
-            0] >= 8 else torch.float16
-
         tokenizer = AutoTokenizer.from_pretrained(
             model_name,
             trust_remote_code=True,
@@ -315,7 +312,7 @@ def load_model(model_name, device, model_dir, cache_dir):
         )
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
-            torch_dtype=TORCH_TYPE,
+            torch_dtype=torch.float16,
             trust_remote_code=True,
             low_cpu_mem_usage=True,
             cache_dir=model_dir,
