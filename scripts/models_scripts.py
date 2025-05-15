@@ -175,6 +175,7 @@ def load_model(model_name, device, model_dir, cache_dir):
 
         # Load the processor and model
         arguments = {"device_map": "auto", "torch_dtype": torch.bfloat16, "trust_remote_code": True}
+        
         processor = AutoProcessor.from_pretrained(
             model_name,
             **arguments, 
@@ -193,28 +194,30 @@ def load_model(model_name, device, model_dir, cache_dir):
             print('point:',x1, y1)
             
             prompt=f"What is the object at point x = {int(x1)}, y = {int(y1)} of the image? Answer with the object's name only. No extra text."
+            with torch.no_grad():
+                with torch.cuda.amp.autocast(dtype=torch.bfloat16):
 
-            # Process image from URL and text prompt
-            inputs = processor.process(
-                images=[image],
-                text=prompt
-            )
+                    # Process image from URL and text prompt
+                    inputs = processor.process(
+                        images=[image],
+                        text=prompt
+                    )
 
-            # Move inputs to the correct device and create a batch of size 1
-            inputs = {k: v.to(model.device).unsqueeze(0) for k, v in inputs.items()}
-            #decoded_input = processor.tokenizer.decode(inputs['input_ids'][0])
-    
-            # Generate output with configured generation settings
-            with torch.autocast("cuda", enabled=True, dtype=torch.bfloat16):
-                output = model.generate_from_batch(
-                    inputs,
-                    GenerationConfig(max_new_tokens=200, stop_strings=["<|endoftext|>"]),
-                    tokenizer=processor.tokenizer
-                )
+                    # Move inputs to the correct device and create a batch of size 1
+                    inputs = {k: v.to(model.device).unsqueeze(0) for k, v in inputs.items()}
+                    #decoded_input = processor.tokenizer.decode(inputs['input_ids'][0])
+            
+                    # Generate output with configured generation settings
+                    with torch.autocast("cuda", enabled=True, dtype=torch.bfloat16):
+                        output = model.generate_from_batch(
+                            inputs,
+                            GenerationConfig(max_new_tokens=200, stop_strings=["<|endoftext|>"]),
+                            tokenizer=processor.tokenizer
+                        )
 
-            # Decode generated tokens to text
-            generated_tokens = output[0, inputs['input_ids'].size(1):]
-            generated_text = processor.tokenizer.decode(generated_tokens, skip_special_tokens=True)
+                    # Decode generated tokens to text
+                    generated_tokens = output[0, inputs['input_ids'].size(1):]
+                    generated_text = processor.tokenizer.decode(generated_tokens, skip_special_tokens=True)
 
             return generated_text
 
