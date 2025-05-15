@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=vlms_eval           # Job name
+#SBATCH --job-name=molmo_eval           # Job name
 #SBATCH --output=output_%j.txt      # Output file (%j = job ID)
 #SBATCH --error=error_%j.txt        # Error file
 #SBATCH --ntasks=1                  # Total number of tasks
