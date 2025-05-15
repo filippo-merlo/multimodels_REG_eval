@@ -253,7 +253,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     # python evaluate.py --model_name 'allenai/Molmo-7B-D-0924' --device cuda
-    # python evaluate.py --model_name 'Salesforce/xgen-mm-phi3-mini-instruct-singleimg-r-v1.5' --device cuda
+    # python evaluate.py --model_name 'Salesforce/xgen-mm-phi3-mini-instruct-interleave-r-v1.5' --device cuda
     # python evaluate.py --model_name 'microsoft/kosmos-2-patch14-224' --device cuda
     # python evaluate.py --model_name 'Qwen/Qwen2-VL-7B-Instruct' --device cuda
     # python evaluate.py --model_name 'llava-hf/llava-onevision-qwen2-0.5b-si-hf' --device cuda
