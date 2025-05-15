@@ -150,7 +150,7 @@ def evaluate(model_name, data, images_n_p, device):
 
 
 # Load CLIP model and tokenizer
-device = "cuda" if torch.cuda.is_available() else "cpu"
+device = "cuda"
 
 model_name = "openai/clip-vit-base-patch32"
 clip_model = CLIPModel.from_pretrained(model_name).to(device)
