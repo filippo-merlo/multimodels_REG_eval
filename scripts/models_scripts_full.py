@@ -238,6 +238,86 @@ def load_model(model_name, device, model_dir, cache_dir):
  
         return model, generate
     
+    elif model_name == "Qwen/Qwen2.5-VL-7B-Instruct":
+        from transformers import Qwen2_5_VLForConditionalGeneration, AutoTokenizer, AutoProcessor
+        from qwen_vl_utils import process_vision_info
+
+        # default: Load the model on the available device(s)
+        model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
+            model_name, 
+            torch_dtype="auto", 
+            device_map="auto",
+            cache_dir=model_dir,
+        )
+
+        # We recommend enabling flash_attention_2 for better acceleration and memory saving, especially in multi-image and video scenarios.
+        # model = Qwen2VLForConditionalGeneration.from_pretrained(
+        #     "Qwen/Qwen2-VL-7B-Instruct-GPTQ-Int4",
+        #     torch_dtype=torch.bfloat16,
+        #     attn_implementation="flash_attention_2",
+        #     device_map="auto",
+        # )
+
+        # default processer
+        processor = AutoProcessor.from_pretrained(model_name,cache_dir=cache_dir)
+
+        # The default range for the number of visual tokens per image in the model is 4-16384. You can set min_pixels and max_pixels according to your needs, such as a token count range of 256-1280, to balance speed and memory usage.
+        # min_pixels = 256*28*28
+        # max_pixels = 1280*28*28
+        # processor = AutoProcessor.from_pretrained("Qwen/Qwen2-VL-7B-Instruct-GPTQ-Int4", min_pixels=min_pixels, max_pixels=max_pixels)
+
+        def generate(model, image, bbox):
+            x1, y1, x2, y2 = map(lambda x: round(x, 1), convert_box(normalize_box_N(bbox))) 
+
+            path = "temp_image.jpg"
+            image.save(path)
+            
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "image": path,
+                        },
+                        {
+                            "type": "text",
+                            "text": f"What is the object in <|object_ref_start|>this part of the image<|object_ref_end|><|box_start|>({x1},{y1}),({x2},{y2})<|box_end|>? Answer with the object's name only. No extra text."
+                        },
+                    ],
+                }
+            ]
+
+            # Preparation for inference
+            text = processor.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True
+            )
+
+            image_inputs, video_inputs = process_vision_info(messages)
+
+            inputs = processor(
+                text=[text],
+                images=image_inputs,
+                videos=video_inputs,
+                padding=True,
+                return_tensors="pt",
+            )
+            inputs = inputs.to(model.device)
+            #decoded_input = processor.decode(inputs['input_ids'][0])
+
+            # Inference: Generation of the output
+            generated_ids = model.generate(**inputs, max_new_tokens=128)
+            generated_ids_trimmed = [
+                out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
+            ]
+            output_text = processor.batch_decode(
+                generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
+            )
+            os.remove(path)
+            return output_text[0].replace(f"What is the object in this part of the image [{x1}, {y1}, {x2}, {y2}]? Answer with the object's name only. No extra text.assistant",'')
+ 
+        return model, generate
+    
     elif model_name == "llava-hf/llava-onevision-qwen2-0.5b-si-hf":
         from PIL import Image
         import torch

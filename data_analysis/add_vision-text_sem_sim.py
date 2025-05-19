@@ -10,7 +10,7 @@ import torch
 from tqdm import tqdm
 # Load CLIP model and tokenizer
 
-device = "mps"
+device = "cuda"
 
 model_name = "openai/clip-vit-base-patch32"
 clip_model = CLIPModel.from_pretrained(model_name).to(device)
@@ -43,7 +43,7 @@ def compute_cosine_similarity(row):
     return torch.nn.functional.cosine_similarity(text_embed_1, text_embed_2, dim=1).item()
 
 # Specify the folder containing your CSV files
-folder_path = '/Users/filippomerlo/Desktop/output'
+folder_path = '/home/fmerlo/data/sceneregstorage/eval_output'
 
 # Get a list of all CSV files in the specified folder
 csv_files = [file for file in os.listdir(folder_path) if file.endswith('.csv')]
@@ -67,17 +67,6 @@ df = df[df['target'] != "nothing"]
 # Fill missing values in 'rel_level' with 'original'
 df['Rel. Level'] = df['rel_level'].fillna('original')
 df['Noise Area'] = df['condition'].apply(lambda x: x.split('_')[0])
-
-'''
-df.columns
-output:
-Index(['Unnamed: 0', 'model_name', 'image_name', 'noise_level', 'condition',
-       'target', 'long_target', 'raw_output', 'output', 'long_output',
-       'scores', 'text_similarity_scores', 'long_caption_scores',
-       'long_caption_text_similarity_scores', 'scene', 'rel_score',
-       'rel_level', 'Rel. Level', 'Noise Area'],
-      dtype='object')
-'''
 
 #%%
 # Apply the function to each row with a progress bar

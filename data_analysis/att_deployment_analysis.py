@@ -13,7 +13,7 @@ tqdm.pandas()
 separator = "\n\n##################################################\n##################################################\n\n"
 
 # --- Load the data ---
-file_path = '/home/fmerlo/data/sceneregstorage/sceneREG_data/attention_deployment/results_att_deployment_last.csv'  # Update with your actual file path
+file_path = '/home/fmerlo/data/sceneregstorage/attn_eval_output/results_att_deployment_last.csv'  # Update with your actual file path
 #file_path = '/Users/filippomerlo/Desktop/attention_deployment/results_att_deployment.csv'  # Update with your actual file path
 
 df = pd.read_csv(file_path)
@@ -108,8 +108,8 @@ merged_layers.rename(columns={'attn_ratio': 'attn_ratio_wrong'}, inplace=True)
 merged_layers.round(3)
 #%%
 # --- Compute mean attention ratio per layer grouped by condition ---
-grouped_means = grouped_means_wrong
-y_lim = 0.8
+grouped_means = grouped_means_correct
+y_lim = 1
 
 # --- Filter and plot results for a specific noise level ---
 noise_level_filter = 0.0  # Set noise level for filtering
@@ -161,6 +161,96 @@ plt.title(f'Mean Attention Ratio per Layer (Noise = {noise_level_filter})')
 plt.legend()
 plt.grid()
 plt.show()
+
+#%%
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# assume grouped_means is your DataFrame
+noise_levels = [0.0, 0.5, 1.0]
+conditions = ['all', 'context', 'target']
+n_rows, n_cols = len(noise_levels), len(conditions)
+
+fig, axes = plt.subplots(n_rows, n_cols, figsize=(5*n_cols, 4*n_rows), sharex=True, sharey=True)
+
+for i, nl in enumerate(noise_levels):
+    df_n = grouped_means[grouped_means['noise_level'] == nl]
+    for j, cond in enumerate(conditions):
+        ax = axes[i, j]
+        df_nc = df_n[df_n['condition'] == cond]
+        pivot = df_nc.pivot(index='rel_level', columns='layer', values='attn_ratio')
+        
+        sns.heatmap(
+            pivot,
+            ax=ax,
+            annot=False,
+            fmt=".2f",
+            vmin=0, vmax=1,
+            linewidths=0.5,
+            linecolor='gray',
+            cbar=(j == n_cols - 1)
+        )
+        if i == 0:
+            ax.set_title(cond.capitalize())
+        if j == 0:
+            ax.set_ylabel(f'Noise={nl}\nRelevance')
+        else:
+            ax.set_ylabel('')
+        ax.set_xlabel('Layer')
+
+plt.tight_layout()
+plt.show()
+
+#%%
+import matplotlib.pyplot as plt
+import seaborn as sns
+from matplotlib.colors import TwoSlopeNorm
+# precompute global stats to center the diverging map
+all_vals = grouped_means['attn_ratio']
+vmin, vmax = [0,1]
+vcenter = all_vals.mean()
+noise_levels = [0.0, 0.5, 1.0]
+conditions   = ['all', 'context', 'target']
+n_rows, n_cols = len(noise_levels), len(conditions)
+
+fig, axes = plt.subplots(n_rows, n_cols, figsize=(5*n_cols, 4*n_rows),
+                         sharex=True, sharey=True)
+
+for i, nl in enumerate(noise_levels):
+    df_n = grouped_means[grouped_means['noise_level'] == nl]
+    for j, cond in enumerate(conditions):
+        ax = axes[i, j]
+        df_nc = df_n[df_n['condition'] == cond]
+        pivot = df_nc.pivot(index='rel_level', columns='layer', values='attn_ratio')
+
+        # choose either a diverging norm...
+        norm = TwoSlopeNorm(vmin=vmin, vcenter=vcenter, vmax=vmax)
+
+        sns.heatmap(
+            pivot,
+            ax=ax,
+            annot=False,
+            cmap="RdBu_r",      # diverging
+            norm=norm,
+            linewidths=0.5,
+            linecolor='gray',
+            cbar=(j == n_cols - 1)
+        )
+
+        # …or for a sequential emphasis on small ranges, swap to:
+        # sns.heatmap(..., cmap="magma", vmin=vmin, vmax=vmax, ...)
+        if i == 0:
+            ax.set_title(cond.capitalize(), fontsize=14)
+        if j == 0:
+            ax.set_ylabel(f'Noise={nl}\nRelevance', fontsize=12)
+        else:
+            ax.set_ylabel('')
+        ax.set_xlabel('Layer', fontsize=12)
+        ax.tick_params(labelsize=10)
+
+plt.tight_layout()
+plt.show()
+
 
 #%%
 # 

@@ -7,7 +7,7 @@ import scipy.stats as stats
 from pprint import pprint
 
 # Specify the folder containing your CSV files
-file_path = '/Users/filippomerlo/Desktop/output/updated_complete_output.csv'
+file_path = '/home/fmerlo/data/sceneregstorage/eval_output/updated_complete_output.csv'
 
 # Read the CSV file into a DataFrame
 df = pd.read_csv(file_path)
@@ -16,31 +16,31 @@ df = pd.read_csv(file_path)
 df = df[df['target'] != "nothing"]
 
 # Fill missing values in 'rel_level' with 'original'
-df['Rel. Level'] = df['rel_level'].fillna('original')
+df['Rel. Level'] = df['rel_level'].fillna('original').apply(lambda x: x.replace('_', ' '))
 df['Noise Area'] = df['condition'].apply(lambda x: x.split('_')[0])
 
 desired_models = [
-    'cyan2k/molmo-7B-O-bnb-4bit',
-    'Salesforce/xgen-mm-phi3-mini-instruct-r-v1',
+    'Qwen/Qwen2-VL-7B-Instruct',
+    'allenai/Molmo-7B-D-0924',
+    'llava-hf/llava-onevision-qwen2-7b-ov-hf',
+    'Salesforce/xgen-mm-phi3-mini-instruct-interleave-r-v1.5',
+    # smaller models
     'llava-hf/llava-onevision-qwen2-0.5b-si-hf',
-    'Salesforce/xgen-mm-phi3-mini-instruct-singleimg-r-v1.5',
-    'Qwen/Qwen2-VL-2B-Instruct-GPTQ-Int8',
     'microsoft/kosmos-2-patch14-224'
 ]
 
 # Filter DataFrame to include only the selected models
 df = df[df['model_name'].isin(desired_models)]
-df
 #%%
 # --- Filter dataset based on selected image ---
-filtered_images_folder_path = '/Users/filippomerlo/Desktop/manually_filtered_images'
-# Get all image filenames in the folder (only valid image formats)
-image_filenames = {f for f in os.listdir(filtered_images_folder_path) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tiff'))}
-# Extract unique image IDs from filenames
-image_filenames_id = {f.split('_')[0] for f in image_filenames}
-# filter by image filenames
-df_filtered = df[df['image_name'].apply(lambda x: x.split('_')[0] in image_filenames_id)] if 'image_name' in df.columns else df
-
+#filtered_images_folder_path = '/Users/filippomerlo/Desktop/manually_filtered_images'
+## Get all image filenames in the folder (only valid image formats)
+#image_filenames = {f for f in os.listdir(filtered_images_folder_path) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tiff'))}
+## Extract unique image IDs from filenames
+#image_filenames_id = {f.split('_')[0] for f in image_filenames}
+## filter by image filenames
+#df_filtered = df[df['image_name'].apply(lambda x: x.split('_')[0] in image_filenames_id)] if 'image_name' in df.columns else df
+#%%
 
 # compute metrics
 # Soft Accuracy
@@ -67,27 +67,25 @@ hard_accuracy_by_combined = df_hard_accuracy.groupby(['Rel. Level', 'noise_level
 ].mean().reset_index()
 
 # Filtered Dataset
-# Hard Accuracy
-df_filtered['target_clean'] = df_filtered['target'].str.replace(r' \([^)]*\)', '', regex=True).str.lower()
-df_filtered['output_clean'] = df_filtered['output'].str.replace('\.', '', regex=True).str.lower()
-df_filtered['Levenshtein ratio'] = df_filtered.apply(lambda row: ratio(row['output_clean'], row['target_clean']), axis=1)
-df_filtered['hard_accuracy'] = df_filtered.apply(lambda row: row['Levenshtein ratio'] >= 0.55, axis=1).astype(int)
-# Find the longest string in 'target_clean'
-max_length = max(df_filtered['target_clean'].apply(len))
-# Filter out rows where 'output_clean' is longer than max_length
-df_filtered_hard_accuracy = df_filtered[df_filtered['output_clean'].apply(len) <= max_length] #!!!
-hard_accuracy_filtered_by_combined = df_filtered_hard_accuracy.groupby(['Rel. Level', 'noise_level', 'Noise Area'])[
-    ['hard_accuracy']
-].mean().reset_index()
+## Hard Accuracy
+#df_filtered['target_clean'] = df_filtered['target'].str.replace(r' \([^)]*\)', '', regex=True).str.lower()
+#df_filtered['output_clean'] = df_filtered['output'].str.replace('\.', '', regex=True).str.lower()
+#df_filtered['Levenshtein ratio'] = df_filtered.apply(lambda row: ratio(row['output_clean'], row['target_clean']), axis=1)
+#df_filtered['hard_accuracy'] = df_filtered.apply(lambda row: row['Levenshtein ratio'] >= 0.55, axis=1).astype(int)
+## Find the longest string in 'target_clean'
+#max_length = max(df_filtered['target_clean'].apply(len))
+## Filter out rows where 'output_clean' is longer than max_length
+#df_filtered_hard_accuracy = df_filtered[df_filtered['output_clean'].apply(len) <= max_length] #!!!
+#hard_accuracy_filtered_by_combined = df_filtered_hard_accuracy.groupby(['Rel. Level', 'noise_level', 'Noise Area'])[
+#    ['hard_accuracy']
+#].mean().reset_index()
+#
+## Soft Accuracy
+#df_filtered['soft_accuracy'] = (df_filtered['long_caption_text_similarity_scores'] >= 0.9).astype(int) #!!!
+#soft_accuracy_filtered_by_combined = df_filtered.groupby(['Rel. Level', 'noise_level', 'Noise Area'])[
+#    ['soft_accuracy']
+#].mean().reset_index()
 
-# Soft Accuracy
-df_filtered['soft_accuracy'] = (df_filtered['long_caption_text_similarity_scores'] >= 0.9).astype(int) #!!!
-soft_accuracy_filtered_by_combined = df_filtered.groupby(['Rel. Level', 'noise_level', 'Noise Area'])[
-    ['soft_accuracy']
-].mean().reset_index()
-
-#%%
-df.columns
 #%%
 df_hard_accuracy
 df_to_print = df_hard_accuracy.groupby(['model_name', 'Rel. Level', 'noise_level', 'Noise Area'])[['long_caption_scores', 'long_caption_text_similarity_scores', 'hard_accuracy', 'soft_accuracy']].mean().reset_index()
@@ -103,9 +101,6 @@ for model, group in df_to_print.groupby('model_name'):
     print(group.drop(columns='model_name').to_latex(index=False, float_format="%.3f"))
     print("\caption{Results for model: " + model + "}")
     print("\end{table}")
-
-#%%
-
 
 
 #%%
@@ -137,7 +132,7 @@ merged_accuracy_similarity['Noise Area'][
 # Define the desired order
 desired_order_area = ['--', 'target', 'context', 'all']
 desired_order_level = [0.0, 0.5, 1.0]
-desired_order_rel = ['original', 'middle', 'low']
+desired_order_rel = ['original','same target', 'high', 'middle', 'low']
 
 # Convert column to categorical with the specified order
 merged_accuracy_similarity['Noise Area'] = pd.Categorical(merged_accuracy_similarity['Noise Area'], categories=desired_order_area, ordered=True)
@@ -187,7 +182,7 @@ g = sns.catplot(
 for idx, ax in enumerate(g.axes.flat):
     ax.set_ylim(0.77, 0.86)
 
-    if idx in [0,4,8]:
+    if idx in [0,4,8,12,16]:
         ax.set_xticks([0])  
         ax.margins(x=0.9)
     else:
@@ -242,21 +237,21 @@ merged_hard_accuracy
 semantic_by_combined = df.groupby(['Rel. Level', 'noise_level', 'Noise Area'])[
     ['long_caption_scores', 'long_caption_text_similarity_scores']
 ].mean().reset_index()
+semantic_by_combined
+## Group data by 'rel_level', 'noise_level', and 'condition', then compute mean scores
+#semantic_by_combined_filtered = df_filtered.groupby(['Rel. Level', 'noise_level', 'Noise Area'])[
+#    ['long_caption_scores', 'long_caption_text_similarity_scores']
+#].mean().reset_index()
 
-# Group data by 'rel_level', 'noise_level', and 'condition', then compute mean scores
-semantic_by_combined_filtered = df_filtered.groupby(['Rel. Level', 'noise_level', 'Noise Area'])[
-    ['long_caption_scores', 'long_caption_text_similarity_scores']
-].mean().reset_index()
+## Merge datasets, keeping track of filtered data
+#merged_semantic = semantic_by_combined.merge(
+#    semantic_by_combined_filtered, 
+#    on=['Rel. Level', 'noise_level', 'Noise Area'], 
+#    suffixes=('_full', '_filtered'),
+#    how='outer'  # Ensures all data is included
+#).round(3)
 
-# Merge datasets, keeping track of filtered data
-merged_semantic = semantic_by_combined.merge(
-    semantic_by_combined_filtered, 
-    on=['Rel. Level', 'noise_level', 'Noise Area'], 
-    suffixes=('_full', '_filtered'),
-    how='outer'  # Ensures all data is included
-).round(3)
-
-merged_semantic
+#merged_semantic
 
 #%% Semantic Similarity Analysis
 
@@ -282,6 +277,64 @@ for score in scores:
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.tight_layout()
     plt.show()
+#%%
+# 1. Small-multiples with per-condition coloured baselines
+import matplotlib.pyplot as plt
+
+# compute zero-noise baselines per relatedness level (in target area)
+baselines = (
+    semantic_by_combined
+    .query("`Noise Area`=='target' and noise_level==0")
+    .groupby('Rel. Level')['long_caption_scores']
+    .mean()
+    .to_dict()
+)
+
+areas = semantic_by_combined['Noise Area'].unique()
+levels = semantic_by_combined['Rel. Level'].unique()
+
+fig, axes = plt.subplots(1, len(areas), figsize=(5*len(areas), 4), sharey=True)
+for ax, area in zip(axes, areas):
+    sub = semantic_by_combined[semantic_by_combined['Noise Area']==area]
+    if area == 'target':
+        sub = sub[sub['noise_level'] > 0]  # drop zero‐noise points
+
+    for lvl in levels:
+        s = sub[sub['Rel. Level']==lvl]
+        # plot main curve and capture its color
+        line, = ax.plot(
+            s['noise_level'], s['long_caption_scores'],
+            marker='o', label=lvl
+        )
+        color = line.get_color()
+        # draw baseline in same color
+        ax.axhline(
+            baselines[lvl],
+            linestyle='--',
+            color=color,
+            linewidth=1,
+            alpha=1,
+            zorder=0,
+            label=f"{lvl} baseline"
+        )
+    ax.set_title(area)
+    ax.set_xlabel('Noise Level')
+
+# add one dashed-line legend entry for the baseline
+axes[-1].plot([], [], linestyle='--', color='gray', label='0 noise condition')
+
+# build legend with one entry per relatedness + the baseline
+handles, labels = axes[-1].get_legend_handles_labels()
+by_label = dict(zip(labels[::2], handles[::2]))
+axes[-1].legend(
+    by_label.values(),
+    by_label.keys(),
+    bbox_to_anchor=(1.05, 1),
+    loc='upper left'
+)
+plt.tight_layout()
+plt.show()
+
 
 #%%
 pivot_table = semantic_by_combined.pivot_table(
@@ -341,7 +394,7 @@ for score in scores:
         hue='model_name',
         palette='tab10'
     )
-    plt.ylim(0.5,0.8)
+    plt.ylim(0.60,0.85)
     plt.title(f'RefCLIPScore at Noise Level 0 by Relatedness Level')
     plt.xlabel('Relatedness Level')
     plt.ylabel('RefCLIPScore')
