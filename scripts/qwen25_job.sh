@@ -4,7 +4,7 @@
 #SBATCH --error=error_%j.txt        # Error file
 #SBATCH --ntasks=1                  # Total number of tasks
 #SBATCH --cpus-per-task=4           # CPU cores per task
-#SBATCH --mem=20G                   # Memory per node
+#SBATCH --mem=40G                   # Memory per node
 #SBATCH --time=3-00:00:00           # Time limit (hh:mm:ss)
 #SBATCH --partition=gpua100     # Partition (queue) name
 #SBATCH --gres=gpu:1            # Request GPU (if needed)
