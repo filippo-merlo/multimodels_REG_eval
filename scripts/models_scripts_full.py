@@ -274,7 +274,7 @@ def load_model(model_name, device, model_dir, cache_dir):
                         },
                         {
                             "type": "text",
-                            "text": f"What is the object in this part of the image [{x1},{y1},{x2},{y2}]? Answer with the object's name only. No extra text."
+                            "text": f"What is the object in this part of the image [{x1}, {y1}, {x2}, {y2}]? Answer with the object's name only. No extra text."
                         },
                     ],
                 }
