@@ -265,6 +265,7 @@ def load_model(model_name, device, model_dir, cache_dir):
             image.save(path)
             
             messages = [
+                {"role": "system", "content": "You are a helpful assistant."},
                 {
                     "role": "user",
                     "content": [
@@ -298,15 +299,15 @@ def load_model(model_name, device, model_dir, cache_dir):
             #decoded_input = processor.decode(inputs['input_ids'][0])
 
             # Inference: Generation of the output
-            generated_ids = model.generate(**inputs, max_new_tokens=128)
-            generated_ids_trimmed = [
-                out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
+            output_ids = model.generate(**inputs, max_new_tokens=128)
+            generated_ids = [
+                out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, output_ids)
             ]
             output_text = processor.batch_decode(
-                generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
+                generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False
             )
             os.remove(path)
-            return output_text[0].replace(f"What is the object in this part of the image [{x1}, {y1}, {x2}, {y2}]? Answer with the object's name only. No extra text.assistant",'')
+            return output_text[0].replace(f"What is the object in this part of the image [{x1}, {y1}, {x2}, {y2}]? Answer with the object's name only. No extra text.",'')
  
         return model, generate
     
