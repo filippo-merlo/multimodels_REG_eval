@@ -7,31 +7,27 @@ from tqdm import tqdm
 import os
 from pprint import pprint
 
-
 tqdm.pandas()
 
 separator = "\n\n##################################################\n##################################################\n\n"
 
 # --- Load the data ---
-file_path = '/home/fmerlo/data/sceneregstorage/attn_eval_output/results_att_deployment_last.csv'  # Update with your actual file path
-#file_path = '/Users/filippomerlo/Desktop/attention_deployment/results_att_deployment.csv'  # Update with your actual file path
+file_path = '/home/fmerlo/data/sceneregstorage/attn_eval_output/results_att_deployment_last_wscores.csv'  # Update with your actual file path
 
 df = pd.read_csv(file_path)
-df['rel_level'] = df['rel_level'].fillna('original')
-df['condition'] = df['condition'].str.replace('_noise', '', regex=True)
 #%%
-# --- Filter dataset based on available image filenames ---
-filtered_images_folder_path = '/Users/filippomerlo/Desktop/manually_filtered_images'
-
-# Get all image filenames in the folder (only valid image formats)
-image_filenames = {f for f in os.listdir(filtered_images_folder_path) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tiff'))}
-
-# Extract unique image IDs from filenames
-image_filenames_id = {f.split('_')[0] for f in image_filenames}
-
-# Ensure 'image_name' column exists before filtering
-df = df[df['image_name'].apply(lambda x: x.split('_')[0] in image_filenames_id)] if 'image_name' in df.columns else df
-
+## --- Filter dataset based on available image filenames ---
+#filtered_images_folder_path = '/Users/filippomerlo/Desktop/manually_filtered_images'
+#
+## Get all image filenames in the folder (only valid image formats)
+#image_filenames = {f for f in os.listdir(filtered_images_folder_path) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tiff'))}
+#
+## Extract unique image IDs from filenames
+#image_filenames_id = {f.split('_')[0] for f in image_filenames}
+#
+## Ensure 'image_name' column exists before filtering
+#df = df[df['image_name'].apply(lambda x: x.split('_')[0] in image_filenames_id)] if 'image_name' in df.columns else df
+#
 #%%
 # --- Ensure list-like columns are properly parsed from strings ---
 def parse_list(value):
@@ -61,8 +57,12 @@ df['attn_ratio'] = df.progress_apply(compute_ratio, axis=1)
 df['layer'] = df['attn_ratio'].apply(lambda x: list(range(len(x))))  # Add index for each layer
 df_exploded = df.explode(['attn_ratio', 'layer'])  # Expand lists into rows
 df_exploded['attn_ratio'] = df_exploded['attn_ratio'].apply(pd.to_numeric, errors='coerce')
+
 #%%
-# clean output and compute accuracy 
+# compute soft accuracy
+df_exploded['soft_accuracy'] = (df_exploded['long_caption_text_similarity_scores'] >= 0.9).astype(int) #!!!
+
+# clean output and compute hard accuracy 
 df_exploded['output_clean'] = df_exploded['output_text'].str.replace(r'<\|im_end\|>', '', regex=True).str.replace(r'\.', '', regex=True).str.lower()
 df_exploded['target_clean'] = df_exploded['target'].str.replace(r' \([^)]*\)', '', regex=True).str.lower()
 
@@ -74,6 +74,9 @@ df_exploded['hard_accuracy'] = df_exploded.apply(lambda row: ratio(row['output_c
 # --- Filter for accuracy ---
 df_exploded_correct = df_exploded[df_exploded['hard_accuracy'] == 1]
 df_exploded_wrong = df_exploded[df_exploded['hard_accuracy'] == 0]
+#df_exploded_correct = df_exploded[df_exploded['soft_accuracy'] == 1]
+#df_exploded_wrong = df_exploded[df_exploded['soft_accuracy'] == 0]
+
 
 print(df_exploded.shape[0])
 print(df_exploded_correct.shape[0])
@@ -102,13 +105,11 @@ merged_layers = grouped_layers.merge(
 
 # Rename columns explicitly to avoid naming issues
 merged_layers.rename(columns={'attn_ratio': 'attn_ratio_wrong'}, inplace=True)
-
-
 #%%
 merged_layers.round(3)
 #%%
 # --- Compute mean attention ratio per layer grouped by condition ---
-grouped_means = grouped_means_correct
+grouped_means = grouped_means_wrong
 y_lim = 1
 
 # --- Filter and plot results for a specific noise level ---
@@ -206,6 +207,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.colors import TwoSlopeNorm
 # precompute global stats to center the diverging map
+grouped_means = grouped_means_wrong
 all_vals = grouped_means['attn_ratio']
 vmin, vmax = [0,1]
 vcenter = all_vals.mean()
