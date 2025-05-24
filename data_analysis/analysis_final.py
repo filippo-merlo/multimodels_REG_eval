@@ -5,18 +5,20 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from pprint import pprint
+
 #%%
 # Specify the folder containing your CSV files
-file_path = '/home/fmerlo/data/sceneregstorage/eval_output/final_dataset.csv'
+file_path = '/home/fmerlo/data/sceneregstorage/eval_output/dataset_final_complete.csv'
 
 # Read the CSV file into a DataFrame
 df = pd.read_csv(file_path)
 
-df
+set(df['model_name'])
 #%%
 
 desired_models = [
     #'Qwen/Qwen2-VL-7B-Instruct',
+    'Qwen/Qwen2.5-VL-7B-Instruct',
     'allenai/Molmo-7B-D-0924',
     'llava-hf/llava-onevision-qwen2-7b-ov-hf',
     'Salesforce/xgen-mm-phi3-mini-instruct-interleave-r-v1.5',
@@ -27,7 +29,7 @@ desired_models = [
 
 # Filter DataFrame to include only the selected models
 df = df[df['model_name'].isin(desired_models)]
-
+df
 #%% Preliminary statistics
 # Compute the average rel_score per Rel. Level
 avg_scores = df.groupby("Rel. Level")["rel_score"].mean()
@@ -35,6 +37,7 @@ avg_scores = df.groupby("Rel. Level")["rel_score"].mean()
 print(avg_scores)
 # Reset index and convert to categorical with ordered levels
 avg_scores_df = avg_scores.reset_index()
+rel_order = ['original', 'same target', 'high', 'medium', 'low']
 avg_scores_df["Rel. Level"] = pd.Categorical(avg_scores_df["Rel. Level"], categories=rel_order, ordered=True)
 
 # Sort values by custom order
@@ -59,7 +62,6 @@ plt.show()
 ## filter by image filenames
 #df_filtered = df[df['image_name'].apply(lambda x: x.split('_')[0] in image_filenames_id)] if 'image_name' in df.columns else df
 #%%
-
 # compute metrics
 # Soft Accuracy
 soft_accuracy_by_combined = df.groupby(['Rel. Level', 'Noise Level', 'Noise Area'])[
@@ -318,6 +320,8 @@ for _, row in radar_data.iterrows():
     label = f"{row['Noise Area']} - Noise {row['Noise Level']}"
     values = [row[cat] for cat in categories]
     values += values[:1]
+    if row['Noise Area'] == 'target' and row['Noise Level'] == 0.0:
+        label = 'Noise 0'
     ax.plot(angles, values, marker='o', label=label)
     ax.fill(angles, values, alpha=0.1)
 
@@ -333,7 +337,11 @@ ax.set_yticks(radial_ticks)
 ax.set_yticklabels([str(t) for t in radial_ticks], fontsize=10)
 ax.yaxis.grid(True)
 
-ax.legend(loc='upper right', bbox_to_anchor=(1.5, 1.1))
+# Sort legend so 'Noise 0' appears first
+handles, labels = ax.get_legend_handles_labels()
+sorted_items = sorted(zip(labels, handles), key=lambda x: 0 if x[0] == 'Noise 0' else 1)
+sorted_labels, sorted_handles = zip(*sorted_items)
+ax.legend(sorted_handles, sorted_labels, loc='upper right', bbox_to_anchor=(1.5, 1.1))
 
 plt.tight_layout()
 plt.show()
@@ -439,9 +447,11 @@ fig, ax = plt.subplots(figsize=(7, 7), subplot_kw=dict(polar=True))
 
 # Plot each (Noise Area, Noise Level) combination
 for _, row in radar_data.iterrows():
-    label = f"{row['Noise Area']} - Noise {row['Noise Level']}"
+    label = f"Area: {row['Noise Area']} - Noise: {row['Noise Level']}"
     values = [row[cat] for cat in categories]
     values += values[:1]
+    if row['Noise Area'] == 'target' and row['Noise Level'] == 0.0:
+        label = 'Noise 0'
     ax.plot(angles, values, marker='o', label=label)
     ax.fill(angles, values, alpha=0.1)
 
@@ -458,7 +468,11 @@ ax.set_yticks(radial_ticks)
 ax.set_yticklabels([str(t) for t in radial_ticks], fontsize=10)
 ax.yaxis.grid(True)
 
-ax.legend(loc='upper right', bbox_to_anchor=(1.5, 1.1))
+# Sort legend so 'Noise 0' appears first
+handles, labels = ax.get_legend_handles_labels()
+sorted_items = sorted(zip(labels, handles), key=lambda x: 0 if x[0] == 'Noise 0' else 1)
+sorted_labels, sorted_handles = zip(*sorted_items)
+ax.legend(sorted_handles, sorted_labels, loc='upper right', bbox_to_anchor=(1.5, 1.1))
 
 plt.tight_layout()
 plt.show()
@@ -559,6 +573,8 @@ for _, row in radar_data_soft.iterrows():
     label = f"{row['Noise Area']} - Noise {row['Noise Level']}"
     values = [row[cat] for cat in categories]
     values += values[:1]
+    if row['Noise Area'] == 'target' and row['Noise Level'] == 0.0:
+        label = 'Noise 0'
     ax.plot(angles, values, marker='o', label=label)
     ax.fill(angles, values, alpha=0.1)
 
@@ -574,10 +590,15 @@ ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1])
 ax.set_yticklabels([str(t) for t in [0, 0.2, 0.4, 0.6, 0.8, 1]], fontsize=10)
 ax.yaxis.grid(True)
 
-ax.legend(loc='upper right', bbox_to_anchor=(1.5, 1.1))
+# Sort legend so 'Noise 0' appears first
+handles, labels = ax.get_legend_handles_labels()
+sorted_items = sorted(zip(labels, handles), key=lambda x: 0 if x[0] == 'Noise 0' else 1)
+sorted_labels, sorted_handles = zip(*sorted_items)
+ax.legend(sorted_handles, sorted_labels, loc='upper right', bbox_to_anchor=(1.5, 1.1))
 
 plt.tight_layout()
 plt.show()
+
 
 #%% VISUALIZE
 # Filter dataset to only include rows with Noise Level == 0
@@ -585,23 +606,28 @@ df_zero_noise = df[df['Noise Level'] == 0]
 
 # Categorize models by size
 models_1 = [
+    'Qwen/Qwen2.5-VL-7B-Instruct',
     'allenai/Molmo-7B-D-0924',
     'llava-hf/llava-onevision-qwen2-7b-ov-hf',
     'llava-hf/llava-onevision-qwen2-0.5b-si-hf',
 ]
 models_2 = [
     'Salesforce/xgen-mm-phi3-mini-instruct-interleave-r-v1.5',
-    'microsoft/kosmos-2-patch14-224'
+    'microsoft/kosmos-2-patch14-224',
+    'Qwen/Qwen2-VL-7B-Instruct',
 ]
 
 # Define a custom color palette
 custom_palette = {
-    'allenai/Molmo-7B-D-0924': '#d62728',  # default tab10 color
-    'llava-hf/llava-onevision-qwen2-7b-ov-hf': '#ff7f0e',
-    'llava-hf/llava-onevision-qwen2-0.5b-si-hf': '#b7410e',
-    'Salesforce/xgen-mm-phi3-mini-instruct-interleave-r-v1.5': '#1f77b4',  # red for models_2
-    'microsoft/kosmos-2-patch14-224': '#9467bd'  # purple for models_2
+    'Qwen/Qwen2.5-VL-7B-Instruct': '#e6550d',   # warm orange
+    'Qwen/Qwen2-VL-7B-Instruct': '#31a354',     # green (as requested)
+    'allenai/Molmo-7B-D-0924': "#e91357",       # red
+    'llava-hf/llava-onevision-qwen2-7b-ov-hf': '#a63603',  # dark orange/brown
+    'llava-hf/llava-onevision-qwen2-0.5b-si-hf': '#7f2704', # deeper brown
+    'Salesforce/xgen-mm-phi3-mini-instruct-interleave-r-v1.5': '#1f77b4',  # blue (cold)
+    'microsoft/kosmos-2-patch14-224': '#6a51a3'  # deep purple (cold)
 }
+
 
 # Add a 'Model Size' column
 df_zero_noise['Model Size'] = df_zero_noise['model_name'].apply(
@@ -637,7 +663,7 @@ for score in ['long_caption_scores']:
     # Horizontal grey lines at each y-tick
     ax.yaxis.grid(True, linestyle='-', color='grey', alpha=0.3)
 
-    ax.set_ylim(0.65, 0.85)
+    ax.set_ylim(0.5, 0.85)
     ax.set_title(f'RefCLIPScore at Noise Level 0 by Relatedness Level')
     ax.set_xlabel('Relatedness Level')
     ax.set_ylabel('RefCLIPScore')

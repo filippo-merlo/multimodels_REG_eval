@@ -15,6 +15,18 @@ separator = "\n\n##################################################\n###########
 file_path = '/home/fmerlo/data/sceneregstorage/attn_eval_output/results_att_deployment_last_wscores.csv'  # Update with your actual file path
 
 df = pd.read_csv(file_path)
+
+# Preprocess
+df = df[df['target'] != "nothing"]
+df['Rel. Level'] = df['rel_level'].fillna('original').apply(lambda x: x.replace('_', ' '))
+df = df.drop(columns=['rel_level'])
+df['Rel. Level'] = df['Rel. Level'].apply(lambda x: x.replace('middle', 'medium'))
+df['Noise Area'] = df['condition'].apply(lambda x: x.split('_')[0])
+df = df.drop(columns=['condition'])
+df['Noise Level'] = df['noise_level']
+df = df.drop(columns=['noise_level'])
+#%%
+df
 #%%
 ## --- Filter dataset based on available image filenames ---
 #filtered_images_folder_path = '/Users/filippomerlo/Desktop/manually_filtered_images'
@@ -72,33 +84,33 @@ df_exploded['Levenshtein ratio'] = df_exploded.apply(lambda row: ratio(row['outp
 df_exploded['hard_accuracy'] = df_exploded.apply(lambda row: ratio(row['output_clean'].lower(), row['target_clean'].lower()) >= 0.55, axis=1).astype(int)
 #%%
 # --- Filter for accuracy ---
-df_exploded_correct = df_exploded[df_exploded['hard_accuracy'] == 1]
-df_exploded_wrong = df_exploded[df_exploded['hard_accuracy'] == 0]
-#df_exploded_correct = df_exploded[df_exploded['soft_accuracy'] == 1]
-#df_exploded_wrong = df_exploded[df_exploded['soft_accuracy'] == 0]
+#df_exploded_correct = df_exploded[df_exploded['hard_accuracy'] == 1]
+#df_exploded_wrong = df_exploded[df_exploded['hard_accuracy'] == 0]
+df_exploded_correct = df_exploded[df_exploded['soft_accuracy'] == 1]
+df_exploded_wrong = df_exploded[df_exploded['soft_accuracy'] == 0]
 
 
 print(df_exploded.shape[0])
 print(df_exploded_correct.shape[0])
 print(df_exploded_wrong.shape[0])
 
-grouped_means = df_exploded.groupby(['rel_level', 'noise_level', 'condition', 'layer'])['attn_ratio'].mean().reset_index()
-grouped_means_correct = df_exploded_correct.groupby(['rel_level', 'noise_level', 'condition', 'layer'])['attn_ratio'].mean().reset_index()
-grouped_means_wrong = df_exploded_wrong.groupby(['rel_level', 'noise_level', 'condition', 'layer'])['attn_ratio'].mean().reset_index()
+grouped_means = df_exploded.groupby(['Rel. Level', 'Noise Level', 'Noise Area', 'layer'])['attn_ratio'].mean().reset_index()
+grouped_means_correct = df_exploded_correct.groupby(['Rel. Level', 'Noise Level', 'Noise Area', 'layer'])['attn_ratio'].mean().reset_index()
+grouped_means_wrong = df_exploded_wrong.groupby(['Rel. Level', 'Noise Level', 'Noise Area', 'layer'])['attn_ratio'].mean().reset_index()
 
-grouped_layers = df_exploded.groupby(['rel_level', 'noise_level', 'condition'])['attn_ratio'].mean().reset_index()
-grouped_layers_correct = df_exploded_correct.groupby(['rel_level', 'noise_level', 'condition'])['attn_ratio'].mean().reset_index()
-grouped_layers_wrong = df_exploded_wrong.groupby(['rel_level', 'noise_level', 'condition'])['attn_ratio'].mean().reset_index()
+grouped_layers = df_exploded.groupby(['Rel. Level', 'Noise Level', 'Noise Area'])['attn_ratio'].mean().reset_index()
+grouped_layers_correct = df_exploded_correct.groupby(['Rel. Level', 'Noise Level', 'Noise Area'])['attn_ratio'].mean().reset_index()
+grouped_layers_wrong = df_exploded_wrong.groupby(['Rel. Level', 'Noise Level', 'Noise Area'])['attn_ratio'].mean().reset_index()
 
 # Merge the datasets
 merged_layers = grouped_layers.merge(
     grouped_layers_correct, 
-    on=['noise_level', 'rel_level', 'condition'], 
+    on=['Noise Level', 'Rel. Level', 'Noise Area'], 
     suffixes=('_all', '_correct'),
     how='outer'  # Ensures all data is included
 ).merge(
     grouped_layers_wrong, 
-    on=['noise_level', 'rel_level', 'condition'], 
+    on=['Noise Level', 'Rel. Level', 'Noise Area'], 
     suffixes=('_correct', '_wrong'),
     how='outer'
 )
@@ -109,15 +121,15 @@ merged_layers.rename(columns={'attn_ratio': 'attn_ratio_wrong'}, inplace=True)
 merged_layers.round(3)
 #%%
 # --- Compute mean attention ratio per layer grouped by condition ---
-grouped_means = grouped_means_wrong
+grouped_means = grouped_means_correct
 y_lim = 1
 
 # --- Filter and plot results for a specific noise level ---
 noise_level_filter = 0.0  # Set noise level for filtering
-filtered_data = grouped_means[grouped_means['noise_level'] == noise_level_filter]
+filtered_data = grouped_means[grouped_means['Noise Level'] == noise_level_filter]
 
 plt.figure(figsize=(8, 6))
-for (condition, rel_level), sub_df in filtered_data.groupby(['condition', 'rel_level']):
+for (condition, rel_level), sub_df in filtered_data.groupby(['Noise Area', 'Rel. Level']):
     if condition != 'target':
         continue
     sub_df = sub_df.sort_values(by='layer')
@@ -132,12 +144,12 @@ plt.grid()
 plt.show()
 
 noise_level_filter = 0.5  # Set noise level for filtering
-filtered_data = grouped_means[grouped_means['noise_level'] == noise_level_filter]
+filtered_data = grouped_means[grouped_means['Noise Level'] == noise_level_filter]
 
 plt.figure(figsize=(8, 6))
-for (condition, rel_level), sub_df in filtered_data.groupby(['condition', 'rel_level']):
+for (condition, rel_level), sub_df in filtered_data.groupby(['Noise Area', 'Rel. Level']):
     sub_df = sub_df.sort_values(by='layer')
-    plt.plot(sub_df['layer'], sub_df['attn_ratio'], marker='o', linestyle='-', label=f'Cond: {condition}, Rel: {rel_level}')
+    plt.plot(sub_df['layer'], sub_df['attn_ratio'], marker='o', linestyle='-', label=f'Area: {condition}, Rel: {rel_level}')
 
 plt.xlabel('Layer')
 plt.ylabel('Mean Attention Ratio')
@@ -148,12 +160,12 @@ plt.grid()
 plt.show()
 
 noise_level_filter = 1.0  # Set noise level for filtering
-filtered_data = grouped_means[grouped_means['noise_level'] == noise_level_filter]
+filtered_data = grouped_means[grouped_means['Noise Level'] == noise_level_filter]
 
 plt.figure(figsize=(8, 6))
-for (condition, rel_level), sub_df in filtered_data.groupby(['condition', 'rel_level']):
+for (condition, rel_level), sub_df in filtered_data.groupby(['Noise Area', 'Rel. Level']):
     sub_df = sub_df.sort_values(by='layer')
-    plt.plot(sub_df['layer'], sub_df['attn_ratio'], marker='o', linestyle='-', label=f'Cond: {condition}, Rel: {rel_level}')
+    plt.plot(sub_df['layer'], sub_df['attn_ratio'], marker='o', linestyle='-', label=f'Area: {condition}, Rel: {rel_level}')
 
 plt.xlabel('Layer')
 plt.ylabel('Mean Attention Ratio')
@@ -163,7 +175,6 @@ plt.legend()
 plt.grid()
 plt.show()
 
-#%%
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -175,11 +186,11 @@ n_rows, n_cols = len(noise_levels), len(conditions)
 fig, axes = plt.subplots(n_rows, n_cols, figsize=(5*n_cols, 4*n_rows), sharex=True, sharey=True)
 
 for i, nl in enumerate(noise_levels):
-    df_n = grouped_means[grouped_means['noise_level'] == nl]
+    df_n = grouped_means[grouped_means['Noise Level'] == nl]
     for j, cond in enumerate(conditions):
         ax = axes[i, j]
-        df_nc = df_n[df_n['condition'] == cond]
-        pivot = df_nc.pivot(index='rel_level', columns='layer', values='attn_ratio')
+        df_nc = df_n[df_n['Noise Area'] == cond]
+        pivot = df_nc.pivot(index='Rel. Level', columns='layer', values='attn_ratio')
         
         sns.heatmap(
             pivot,
@@ -202,112 +213,50 @@ for i, nl in enumerate(noise_levels):
 plt.tight_layout()
 plt.show()
 
-#%%
 import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.colors import TwoSlopeNorm
+
 # precompute global stats to center the diverging map
-grouped_means = grouped_means_wrong
 all_vals = grouped_means['attn_ratio']
-vmin, vmax = [0,1]
+vmin, vmax = [0, 1]
 vcenter = all_vals.mean()
 noise_levels = [0.0, 0.5, 1.0]
-conditions   = ['all', 'context', 'target']
+conditions = ['all', 'context', 'target']
 n_rows, n_cols = len(noise_levels), len(conditions)
 
-fig, axes = plt.subplots(n_rows, n_cols, figsize=(5*n_cols, 4*n_rows),
-                         sharex=True, sharey=True)
+fig, axes = plt.subplots(n_rows, n_cols, figsize=(5 * n_cols, 4 * n_rows), sharex=True, sharey=True)
 
 for i, nl in enumerate(noise_levels):
-    df_n = grouped_means[grouped_means['noise_level'] == nl]
+    df_n = grouped_means[grouped_means['Noise Level'] == nl]
     for j, cond in enumerate(conditions):
         ax = axes[i, j]
-        df_nc = df_n[df_n['condition'] == cond]
-        pivot = df_nc.pivot(index='rel_level', columns='layer', values='attn_ratio')
+        df_nc = df_n[df_n['Noise Area'] == cond]
+        pivot = df_nc.pivot(index='Rel. Level', columns='layer', values='attn_ratio')
 
-        # choose either a diverging norm...
         norm = TwoSlopeNorm(vmin=vmin, vcenter=vcenter, vmax=vmax)
 
         sns.heatmap(
             pivot,
             ax=ax,
             annot=False,
-            cmap="RdBu_r",      # diverging
+            cmap="RdBu_r",
             norm=norm,
             linewidths=0.5,
             linecolor='gray',
             cbar=(j == n_cols - 1)
         )
 
-        # …or for a sequential emphasis on small ranges, swap to:
-        # sns.heatmap(..., cmap="magma", vmin=vmin, vmax=vmax, ...)
         if i == 0:
-            ax.set_title(cond.capitalize(), fontsize=14)
+            ax.set_title(cond.capitalize(), fontsize=20)
         if j == 0:
-            ax.set_ylabel(f'Noise={nl}\nRelevance', fontsize=12)
+            ax.set_ylabel(f'Noise={nl}\nRelevance', fontsize=16)
         else:
             ax.set_ylabel('')
-        ax.set_xlabel('Layer', fontsize=12)
-        ax.tick_params(labelsize=10)
+        ax.set_xlabel('Layer', fontsize=16)
+        ax.tick_params(labelsize=14)
 
 plt.tight_layout()
 plt.show()
 
 
-#%%
-# 
-r_mean_n_00_c_target_rel_original = grouped_means[(grouped_means['noise_level'] == 0.0) & (grouped_means['condition'] == 'target') & (grouped_means['rel_level'] == 'original')].sort_values(by='layer')['attn_ratio'].mean()
-r_mean_n_05_c_target_rel_original = grouped_means[(grouped_means['noise_level'] == 0.5) & (grouped_means['condition'] == 'target') & (grouped_means['rel_level'] == 'original')].sort_values(by='layer')['attn_ratio'].mean()
-r_mean_n_10_c_target_rel_original = grouped_means[(grouped_means['noise_level'] == 1.0) & (grouped_means['condition'] == 'target') & (grouped_means['rel_level'] == 'original')].sort_values(by='layer')['attn_ratio'].mean()
-r_mean_n_00_c_context_rel_original = grouped_means[(grouped_means['noise_level'] == 0.0) & (grouped_means['condition'] == 'context') & (grouped_means['rel_level'] == 'original')].sort_values(by='layer')['attn_ratio'].mean()
-r_mean_n_05_c_context_rel_original = grouped_means[(grouped_means['noise_level'] == 0.5) & (grouped_means['condition'] == 'context') & (grouped_means['rel_level'] == 'original')].sort_values(by='layer')['attn_ratio'].mean()
-r_mean_n_10_c_context_rel_original = grouped_means[(grouped_means['noise_level'] == 1.0) & (grouped_means['condition'] == 'context') & (grouped_means['rel_level'] == 'original')].sort_values(by='layer')['attn_ratio'].mean()
-r_mean_n_00_c_all_rel_original = grouped_means[(grouped_means['noise_level'] == 0.0) & (grouped_means['condition'] == 'all') & (grouped_means['rel_level'] == 'original')].sort_values(by='layer')['attn_ratio'].mean()
-r_mean_n_05_c_all_rel_original = grouped_means[(grouped_means['noise_level'] == 0.5) & (grouped_means['condition'] == 'all') & (grouped_means['rel_level'] == 'original')].sort_values(by='layer')['attn_ratio'].mean()
-r_mean_n_10_c_all_rel_original = grouped_means[(grouped_means['noise_level'] == 1.0) & (grouped_means['condition'] == 'all') & (grouped_means['rel_level'] == 'original')].sort_values(by='layer')['attn_ratio'].mean()
-
-r_mean_n_00_c_target_rel_middle = grouped_means[(grouped_means['noise_level'] == 0.0) & (grouped_means['condition'] == 'target') & (grouped_means['rel_level'] == 'middle')].sort_values(by='layer')['attn_ratio'].mean()
-r_mean_n_05_c_target_rel_middle = grouped_means[(grouped_means['noise_level'] == 0.5) & (grouped_means['condition'] == 'target') & (grouped_means['rel_level'] == 'middle')].sort_values(by='layer')['attn_ratio'].mean()
-r_mean_n_10_c_target_rel_middle = grouped_means[(grouped_means['noise_level'] == 1.0) & (grouped_means['condition'] == 'target') & (grouped_means['rel_level'] == 'middle')].sort_values(by='layer')['attn_ratio'].mean()
-r_mean_n_00_c_context_rel_middle = grouped_means[(grouped_means['noise_level'] == 0.0) & (grouped_means['condition'] == 'context') & (grouped_means['rel_level'] == 'middle')].sort_values(by='layer')['attn_ratio'].mean()
-r_mean_n_05_c_context_rel_middle = grouped_means[(grouped_means['noise_level'] == 0.5) & (grouped_means['condition'] == 'context') & (grouped_means['rel_level'] == 'middle')].sort_values(by='layer')['attn_ratio'].mean()
-r_mean_n_10_c_context_rel_middle = grouped_means[(grouped_means['noise_level'] == 1.0) & (grouped_means['condition'] == 'context') & (grouped_means['rel_level'] == 'middle')].sort_values(by='layer')['attn_ratio'].mean()
-r_mean_n_00_c_all_rel_middle = grouped_means[(grouped_means['noise_level'] == 0.0) & (grouped_means['condition'] == 'all') & (grouped_means['rel_level'] == 'middle')].sort_values(by='layer')['attn_ratio'].mean()
-r_mean_n_05_c_all_rel_middle = grouped_means[(grouped_means['noise_level'] == 0.5) & (grouped_means['condition'] == 'all') & (grouped_means['rel_level'] == 'middle')].sort_values(by='layer')['attn_ratio'].mean()
-r_mean_n_10_c_all_rel_middle = grouped_means[(grouped_means['noise_level'] == 1.0) & (grouped_means['condition'] == 'all') & (grouped_means['rel_level'] == 'middle')].sort_values(by='layer')['attn_ratio'].mean()
-
-r_mean_n_00_c_target_rel_low = grouped_means[(grouped_means['noise_level'] == 0.0) & (grouped_means['condition'] == 'target') & (grouped_means['rel_level'] == 'low')].sort_values(by='layer')['attn_ratio'].mean()
-r_mean_n_05_c_target_rel_low = grouped_means[(grouped_means['noise_level'] == 0.5) & (grouped_means['condition'] == 'target') & (grouped_means['rel_level'] == 'low')].sort_values(by='layer')['attn_ratio'].mean()
-r_mean_n_10_c_target_rel_low = grouped_means[(grouped_means['noise_level'] == 1.0) & (grouped_means['condition'] == 'target') & (grouped_means['rel_level'] == 'low')].sort_values(by='layer')['attn_ratio'].mean()
-r_mean_n_00_c_context_rel_low = grouped_means[(grouped_means['noise_level'] == 0.0) & (grouped_means['condition'] == 'context') & (grouped_means['rel_level'] == 'low')].sort_values(by='layer')['attn_ratio'].mean()
-r_mean_n_05_c_context_rel_low = grouped_means[(grouped_means['noise_level'] == 0.5) & (grouped_means['condition'] == 'context') & (grouped_means['rel_level'] == 'low')].sort_values(by='layer')['attn_ratio'].mean()
-r_mean_n_10_c_context_rel_low = grouped_means[(grouped_means['noise_level'] == 1.0) & (grouped_means['condition'] == 'context') & (grouped_means['rel_level'] == 'low')].sort_values(by='layer')['attn_ratio'].mean()
-r_mean_n_00_c_all_rel_low = grouped_means[(grouped_means['noise_level'] == 0.0) & (grouped_means['condition'] == 'all') & (grouped_means['rel_level'] == 'low')].sort_values(by='layer')['attn_ratio'].mean()
-r_mean_n_05_c_all_rel_low = grouped_means[(grouped_means['noise_level'] == 0.5) & (grouped_means['condition'] == 'all') & (grouped_means['rel_level'] == 'low')].sort_values(by='layer')['attn_ratio'].mean()
-r_mean_n_10_c_all_rel_low = grouped_means[(grouped_means['noise_level'] == 1.0) & (grouped_means['condition'] == 'all') & (grouped_means['rel_level'] == 'low')].sort_values(by='layer')['attn_ratio'].mean()
-
-
-# Create a dictionary to store the results
-results = {
-    ("target", "original"): [r_mean_n_00_c_target_rel_original, r_mean_n_05_c_target_rel_original, r_mean_n_10_c_target_rel_original],
-    ("context", "original"): [r_mean_n_00_c_context_rel_original, r_mean_n_05_c_context_rel_original, r_mean_n_10_c_context_rel_original],
-    ("all", "original"): [r_mean_n_00_c_all_rel_original, r_mean_n_05_c_all_rel_original, r_mean_n_10_c_all_rel_original],
-    ("target", "middle"): [r_mean_n_00_c_target_rel_middle, r_mean_n_05_c_target_rel_middle, r_mean_n_10_c_target_rel_middle],
-    ("context", "middle"): [r_mean_n_00_c_context_rel_middle, r_mean_n_05_c_context_rel_middle, r_mean_n_10_c_context_rel_middle],
-    ("all", "middle"): [r_mean_n_00_c_all_rel_middle, r_mean_n_05_c_all_rel_middle, r_mean_n_10_c_all_rel_middle],
-    ("target", "low"): [r_mean_n_00_c_target_rel_low, r_mean_n_05_c_target_rel_low, r_mean_n_10_c_target_rel_low],
-    ("context", "low"): [r_mean_n_00_c_context_rel_low, r_mean_n_05_c_context_rel_low, r_mean_n_10_c_context_rel_low],
-    ("all", "low"): [r_mean_n_00_c_all_rel_low, r_mean_n_05_c_all_rel_low, r_mean_n_10_c_all_rel_low],
-}
-
-# Convert to DataFrame
-df_results = pd.DataFrame.from_dict(results, orient="index", columns=["Noise 0.0", "Noise 0.5", "Noise 1.0"])
-
-# Rename index for better readability
-df_results.index = pd.MultiIndex.from_tuples(df_results.index, names=["Condition", "Relatedness Level"])
-
-# Replace NaN values with "Not Available"
-df_results = df_results.fillna("Not Available")
-
-# Print the table
-print(df_results)

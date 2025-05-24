@@ -46,7 +46,7 @@ def compute_cosine_similarity(row):
 folder_path = '/home/fmerlo/data/sceneregstorage/eval_output'
 
 # Get a list of all CSV files in the specified folder
-csv_files = [file for file in os.listdir(folder_path) if file.endswith('.csv')]
+csv_files = [file for file in os.listdir(folder_path) if file.endswith('Qwen_Qwen2.5-VL-7B-Instruct_results.csv')]
 
 # Initialize an empty list to store DataFrames
 dataframes = []
@@ -73,6 +73,6 @@ df['Noise Area'] = df['condition'].apply(lambda x: x.split('_')[0])
 df['scene_output_similarity'] = [compute_cosine_similarity(row) for row in tqdm(df.itertuples(index=False), total=len(df))]
 df
 # Save the updated DataFrame back to CSV
-df.to_csv(os.path.join(folder_path, 'updated_complete_output.csv'), index=False)
+df.to_csv(os.path.join(folder_path, 'Qwen_Qwen2.5-VL-7B-Instruct_results_with_scene_data.csv'), index=False)
 #%%
 df
