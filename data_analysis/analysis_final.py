@@ -13,16 +13,25 @@ file_path = '/home/fmerlo/data/sceneregstorage/eval_output/dataset_final_complet
 # Read the CSV file into a DataFrame
 df = pd.read_csv(file_path)
 
+# Set global font sizes
+sns.set_context("talk")  # options: paper, notebook, talk, poster
+plt.rcParams.update({
+    'axes.titlesize': 18,
+    'axes.labelsize': 16,
+    'xtick.labelsize': 14,
+    'ytick.labelsize': 14,
+    'legend.title_fontsize': 14,
+    'legend.fontsize': 12,
+})
+
 set(df['model_name'])
 #%%
 
 desired_models = [
-    #'Qwen/Qwen2-VL-7B-Instruct',
     'Qwen/Qwen2.5-VL-7B-Instruct',
     'allenai/Molmo-7B-D-0924',
     'llava-hf/llava-onevision-qwen2-7b-ov-hf',
     'Salesforce/xgen-mm-phi3-mini-instruct-interleave-r-v1.5',
-    # smaller models
     'llava-hf/llava-onevision-qwen2-0.5b-si-hf',
     'microsoft/kosmos-2-patch14-224'
 ]
@@ -214,89 +223,89 @@ semantic_by_combined
 # List of scores to visualize
 scores = ['long_caption_scores']
 
-# Generate line plots for each score metric
-for score in scores:
-    plt.figure(figsize=(14, 7))
-    sns.lineplot(
-        data=semantic_by_combined,
-        x='Noise Level',
-        y=score,
-        hue='Rel. Level',
-        style='Noise Area',  # Differentiates between conditions
-        markers=True,
-        palette='tab10'
-    )
-    plt.title(f'RefCLIPScore vs Noise Level by Noise Area and Relatedness Level')
-    plt.xlabel('Noise Level')
-    plt.xticks([0,0.5,1])
-    plt.ylabel('RefCLIPScore')
-    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-    plt.tight_layout()
-    plt.show()
-
-#Small-multiples with per-condition coloured baselines
-import matplotlib.pyplot as plt
-
-# compute zero-noise baselines per relatedness level (in target area)
-baselines = (
-    semantic_by_combined
-    .query("`Noise Area`=='target' and `Noise Level`==0")
-    .groupby('Rel. Level')['long_caption_scores']
-    .mean()
-    .to_dict()
-)
-
-areas = semantic_by_combined['Noise Area'].unique()
-levels = semantic_by_combined['Rel. Level'].unique()
-
-fig, axes = plt.subplots(1, len(areas), figsize=(5*len(areas), 4), sharey=True)
-for ax, area in zip(axes, areas):
-    sub = semantic_by_combined[semantic_by_combined['Noise Area']==area]
-    if area == 'target':
-        sub = sub[sub['Noise Level'] > 0]  # drop zero‐noise points
-
-    for lvl in levels:
-        s = sub[sub['Rel. Level']==lvl]
-        # plot main curve and capture its color
-        line, = ax.plot(
-            s['Noise Level'], s['long_caption_scores'],
-            marker='o', label=lvl
-        )
-        color = line.get_color()
-        # draw baseline in same color
-        ax.axhline(
-            baselines[lvl],
-            linestyle='--',
-            color=color,
-            linewidth=1,
-            alpha=1,
-            zorder=0,
-            label=f"{lvl} baseline"
-        )
-    ax.set_xticks([0.5,1])
-    ax.set_title(area)
-    ax.set_xlabel('Noise Level')
-    
-
-# add one dashed-line legend entry for the baseline
-axes[-1].plot([], [], linestyle='--', color='gray', label='0 noise condition')
-# Set ylabel only once (shared y-axis)
-axes[0].set_ylabel('RefCLIPScore')
-
-# build legend with one entry per relatedness + the baseline
-handles, labels = axes[-1].get_legend_handles_labels()
-by_label = dict(zip(labels[::2], handles[::2]))
-axes[-1].legend(
-    by_label.values(),
-    by_label.keys(),
-    bbox_to_anchor=(1.05, 1),
-    loc='upper left'
-)
-plt.suptitle("RefCLIPScore vs Noise Level by Noise Area and Relatedness Level", fontsize=16, y=1.02)
-
-plt.tight_layout()
-plt.show()
-
+## Generate line plots for each score metric
+#for score in scores:
+#    plt.figure(figsize=(14, 7))
+#    sns.lineplot(
+#        data=semantic_by_combined,
+#        x='Noise Level',
+#        y=score,
+#        hue='Rel. Level',
+#        style='Noise Area',  # Differentiates between conditions
+#        markers=True,
+#        palette='tab10'
+#    )
+#    plt.title(f'RefCLIPScore vs Noise Level by Noise Area and Relatedness Level')
+#    plt.xlabel('Noise Level')
+#    plt.xticks([0,0.5,1])
+#    plt.ylabel('RefCLIPScore')
+#    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+#    plt.tight_layout()
+#    plt.show()
+#
+##Small-multiples with per-condition coloured baselines
+#import matplotlib.pyplot as plt
+#
+## compute zero-noise baselines per relatedness level (in target area)
+#baselines = (
+#    semantic_by_combined
+#    .query("`Noise Area`=='target' and `Noise Level`==0")
+#    .groupby('Rel. Level')['long_caption_scores']
+#    .mean()
+#    .to_dict()
+#)
+#
+#areas = semantic_by_combined['Noise Area'].unique()
+#levels = semantic_by_combined['Rel. Level'].unique()
+#
+#fig, axes = plt.subplots(1, len(areas), figsize=(5*len(areas), 4), sharey=True)
+#for ax, area in zip(axes, areas):
+#    sub = semantic_by_combined[semantic_by_combined['Noise Area']==area]
+#    if area == 'target':
+#        sub = sub[sub['Noise Level'] > 0]  # drop zero‐noise points
+#
+#    for lvl in levels:
+#        s = sub[sub['Rel. Level']==lvl]
+#        # plot main curve and capture its color
+#        line, = ax.plot(
+#            s['Noise Level'], s['long_caption_scores'],
+#            marker='o', label=lvl
+#        )
+#        color = line.get_color()
+#        # draw baseline in same color
+#        ax.axhline(
+#            baselines[lvl],
+#            linestyle='--',
+#            color=color,
+#            linewidth=1,
+#            alpha=1,
+#            zorder=0,
+#            label=f"{lvl} baseline"
+#        )
+#    ax.set_xticks([0.5,1])
+#    ax.set_title(area)
+#    ax.set_xlabel('Noise Level')
+#    
+#
+## add one dashed-line legend entry for the baseline
+#axes[-1].plot([], [], linestyle='--', color='gray', label='0 noise condition')
+## Set ylabel only once (shared y-axis)
+#axes[0].set_ylabel('RefCLIPScore')
+#
+## build legend with one entry per relatedness + the baseline
+#handles, labels = axes[-1].get_legend_handles_labels()
+#by_label = dict(zip(labels[::2], handles[::2]))
+#axes[-1].legend(
+#    by_label.values(),
+#    by_label.keys(),
+#    bbox_to_anchor=(1.05, 1),
+#    loc='upper left'
+#)
+#plt.suptitle("RefCLIPScore vs Noise Level by Noise Area and Relatedness Level", fontsize=16, y=1.02)
+#
+#plt.tight_layout()
+#plt.show()
+#
 
 # Prepare radar data: include Noise Level
 radar_data = (
@@ -337,219 +346,225 @@ ax.set_yticks(radial_ticks)
 ax.set_yticklabels([str(t) for t in radial_ticks], fontsize=10)
 ax.yaxis.grid(True)
 
-# Sort legend so 'Noise 0' appears first
+# Legend sorted and placed outside the plot
 handles, labels = ax.get_legend_handles_labels()
 sorted_items = sorted(zip(labels, handles), key=lambda x: 0 if x[0] == 'Noise 0' else 1)
 sorted_labels, sorted_handles = zip(*sorted_items)
-ax.legend(sorted_handles, sorted_labels, loc='upper right', bbox_to_anchor=(1.5, 1.1))
 
+# Adjust subplot to make room for legend
+fig.subplots_adjust(right=0.75)  # Shrink plot to make room on the right
+
+ax.legend(
+    sorted_handles, 
+    sorted_labels, 
+    loc='upper left',
+    bbox_to_anchor=(1.05, 1.05),  # Fully outside on the right, vertically centered
+)
 plt.tight_layout()
 plt.show()
 
-#%% Accuracy Analysis
+# Accuracy Analysis
+#
+#plt.figure(figsize=(14, 7))
+#sns.lineplot(
+#    data=hard_accuracy_by_combined,
+#    x='Noise Level',
+#    y='hard_accuracy',
+#    hue='Rel. Level',
+#    style='Noise Area',  # Differentiates between conditions
+#    markers=True,
+#    palette='tab10'
+#)
+#plt.title("hard_accuracy".replace("_", " ").capitalize() + ' vs Noise Level by Noise Area and Rel Level')
+#plt.xlabel('Noise Level')
+#plt.xticks([0,0.5,1])
+#plt.ylabel('hard_accuracy'.replace("_", " ").capitalize())
+#plt.legend(title='Noise Area / Rel Level', bbox_to_anchor=(1.05, 1), loc='upper left')
+#plt.tight_layout()
+#plt.show()
+#
+#import matplotlib.pyplot as plt
+#
+## Compute zero-noise baselines per relatedness level (in target area)
+#baselines = (
+#    hard_accuracy_by_combined
+#    .query("`Noise Area`=='target' and `Noise Level`==0")
+#    .groupby('Rel. Level')['hard_accuracy']
+#    .mean()
+#    .to_dict()
+#)
+#
+#areas = hard_accuracy_by_combined['Noise Area'].unique()
+#levels = hard_accuracy_by_combined['Rel. Level'].unique()
+#
+#fig, axes = plt.subplots(1, len(areas), figsize=(5*len(areas), 4), sharey=True)
+#for ax, area in zip(axes, areas):
+#    sub = hard_accuracy_by_combined[hard_accuracy_by_combined['Noise Area'] == area]
+#    if area == 'target':
+#        sub = sub[sub['Noise Level'] > 0]  # drop zero-noise points
+#
+#    for lvl in levels:
+#        s = sub[sub['Rel. Level'] == lvl]
+#        # plot main curve and capture its color
+#        line, = ax.plot(
+#            s['Noise Level'], s['hard_accuracy'],
+#            marker='o', label=lvl
+#        )
+#        color = line.get_color()
+#        # draw baseline in same color
+#        ax.axhline(
+#            baselines[lvl],
+#            linestyle='--',
+#            color=color,
+#            linewidth=1,
+#            alpha=1,
+#            zorder=0,
+#            label=f"{lvl} baseline"
+#        )
+#    ax.set_xticks([0.5, 1])
+#    ax.set_title(area)
+#    ax.set_xlabel('Noise Level')
+#
+## add one dashed-line legend entry for the baseline
+#axes[-1].plot([], [], linestyle='--', color='gray', label='0 noise condition')
+#
+## Set ylabel only once (shared y-axis)
+#axes[0].set_ylabel('Hard Accuracy')
+#
+## Build legend with one entry per relatedness + the baseline
+#handles, labels = axes[-1].get_legend_handles_labels()
+#by_label = dict(zip(labels[::2], handles[::2]))
+#axes[-1].legend(
+#    by_label.values(),
+#    by_label.keys(),
+#    bbox_to_anchor=(1.05, 1),
+#    loc='upper left'
+#)
+#plt.suptitle("Hard Accuracy vs Noise Level by Noise Area and Relatedness Level", fontsize=16, y=1.02)
+#
+#plt.tight_layout()
+#plt.show()
+#
+## Prepare radar data: include Noise Level
+#radar_data = (
+#    hard_accuracy_by_combined
+#    .groupby(['Noise Area', 'Noise Level', 'Rel. Level'])['hard_accuracy']
+#    .mean()
+#    .unstack('Rel. Level')  # Columns: Relatedness Level
+#    .reset_index()
+#)
+#
+#categories = hard_accuracy_by_combined['Rel. Level'].unique().tolist()
+#num_vars = len(categories)
+#angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
+#angles += angles[:1]  # close the loop
+#
+## Create the figure
+#fig, ax = plt.subplots(figsize=(7, 7), subplot_kw=dict(polar=True))
+#
+## Plot each (Noise Area, Noise Level) combination
+#for _, row in radar_data.iterrows():
+#    label = f"Area: {row['Noise Area']} - Noise: {row['Noise Level']}"
+#    values = [row[cat] for cat in categories]
+#    values += values[:1]
+#    if row['Noise Area'] == 'target' and row['Noise Level'] == 0.0:
+#        label = 'Noise 0'
+#    ax.plot(angles, values, marker='o', label=label)
+#    ax.fill(angles, values, alpha=0.1)
+#
+## Aesthetic settings
+#ax.set_ylim(0, 0.8)
+#ax.set_xticks(angles[:-1])
+#ax.set_xticklabels(categories, fontsize=11)
+#ax.tick_params(axis='x', pad=15)
+#ax.set_title('Mean Hard Accuracy per Relatedness Level, Noise Area, and Noise Level', y=1.1)
+#
+## Radial scale (Hard Accuracy values)
+#radial_ticks = [0, 0.2, 0.4, 0.6, 0.8]
+#ax.set_yticks(radial_ticks)
+#ax.set_yticklabels([str(t) for t in radial_ticks], fontsize=10)
+#ax.yaxis.grid(True)
+#
+## Sort legend so 'Noise 0' appears first
+#handles, labels = ax.get_legend_handles_labels()
+#sorted_items = sorted(zip(labels, handles), key=lambda x: 0 if x[0] == 'Noise 0' else 1)
+#sorted_labels, sorted_handles = zip(*sorted_items)
+#ax.legend(sorted_handles, sorted_labels, loc='upper right', bbox_to_anchor=(1.5, 1.1))
+#
+#plt.tight_layout()
+#plt.show()
 
-plt.figure(figsize=(14, 7))
-sns.lineplot(
-    data=hard_accuracy_by_combined,
-    x='Noise Level',
-    y='hard_accuracy',
-    hue='Rel. Level',
-    style='Noise Area',  # Differentiates between conditions
-    markers=True,
-    palette='tab10'
-)
-plt.title("hard_accuracy".replace("_", " ").capitalize() + ' vs Noise Level by Noise Area and Rel Level')
-plt.xlabel('Noise Level')
-plt.xticks([0,0.5,1])
-plt.ylabel('hard_accuracy'.replace("_", " ").capitalize())
-plt.legend(title='Noise Area / Rel Level', bbox_to_anchor=(1.05, 1), loc='upper left')
-plt.tight_layout()
-plt.show()
-
-import matplotlib.pyplot as plt
-
-# Compute zero-noise baselines per relatedness level (in target area)
-baselines = (
-    hard_accuracy_by_combined
-    .query("`Noise Area`=='target' and `Noise Level`==0")
-    .groupby('Rel. Level')['hard_accuracy']
-    .mean()
-    .to_dict()
-)
-
-areas = hard_accuracy_by_combined['Noise Area'].unique()
-levels = hard_accuracy_by_combined['Rel. Level'].unique()
-
-fig, axes = plt.subplots(1, len(areas), figsize=(5*len(areas), 4), sharey=True)
-for ax, area in zip(axes, areas):
-    sub = hard_accuracy_by_combined[hard_accuracy_by_combined['Noise Area'] == area]
-    if area == 'target':
-        sub = sub[sub['Noise Level'] > 0]  # drop zero-noise points
-
-    for lvl in levels:
-        s = sub[sub['Rel. Level'] == lvl]
-        # plot main curve and capture its color
-        line, = ax.plot(
-            s['Noise Level'], s['hard_accuracy'],
-            marker='o', label=lvl
-        )
-        color = line.get_color()
-        # draw baseline in same color
-        ax.axhline(
-            baselines[lvl],
-            linestyle='--',
-            color=color,
-            linewidth=1,
-            alpha=1,
-            zorder=0,
-            label=f"{lvl} baseline"
-        )
-    ax.set_xticks([0.5, 1])
-    ax.set_title(area)
-    ax.set_xlabel('Noise Level')
-
-# add one dashed-line legend entry for the baseline
-axes[-1].plot([], [], linestyle='--', color='gray', label='0 noise condition')
-
-# Set ylabel only once (shared y-axis)
-axes[0].set_ylabel('Hard Accuracy')
-
-# Build legend with one entry per relatedness + the baseline
-handles, labels = axes[-1].get_legend_handles_labels()
-by_label = dict(zip(labels[::2], handles[::2]))
-axes[-1].legend(
-    by_label.values(),
-    by_label.keys(),
-    bbox_to_anchor=(1.05, 1),
-    loc='upper left'
-)
-plt.suptitle("Hard Accuracy vs Noise Level by Noise Area and Relatedness Level", fontsize=16, y=1.02)
-
-plt.tight_layout()
-plt.show()
-
-# Prepare radar data: include Noise Level
-radar_data = (
-    hard_accuracy_by_combined
-    .groupby(['Noise Area', 'Noise Level', 'Rel. Level'])['hard_accuracy']
-    .mean()
-    .unstack('Rel. Level')  # Columns: Relatedness Level
-    .reset_index()
-)
-
-categories = hard_accuracy_by_combined['Rel. Level'].unique().tolist()
-num_vars = len(categories)
-angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
-angles += angles[:1]  # close the loop
-
-# Create the figure
-fig, ax = plt.subplots(figsize=(7, 7), subplot_kw=dict(polar=True))
-
-# Plot each (Noise Area, Noise Level) combination
-for _, row in radar_data.iterrows():
-    label = f"Area: {row['Noise Area']} - Noise: {row['Noise Level']}"
-    values = [row[cat] for cat in categories]
-    values += values[:1]
-    if row['Noise Area'] == 'target' and row['Noise Level'] == 0.0:
-        label = 'Noise 0'
-    ax.plot(angles, values, marker='o', label=label)
-    ax.fill(angles, values, alpha=0.1)
-
-# Aesthetic settings
-ax.set_ylim(0, 0.8)
-ax.set_xticks(angles[:-1])
-ax.set_xticklabels(categories, fontsize=11)
-ax.tick_params(axis='x', pad=15)
-ax.set_title('Mean Hard Accuracy per Relatedness Level, Noise Area, and Noise Level', y=1.1)
-
-# Radial scale (Hard Accuracy values)
-radial_ticks = [0, 0.2, 0.4, 0.6, 0.8]
-ax.set_yticks(radial_ticks)
-ax.set_yticklabels([str(t) for t in radial_ticks], fontsize=10)
-ax.yaxis.grid(True)
-
-# Sort legend so 'Noise 0' appears first
-handles, labels = ax.get_legend_handles_labels()
-sorted_items = sorted(zip(labels, handles), key=lambda x: 0 if x[0] == 'Noise 0' else 1)
-sorted_labels, sorted_handles = zip(*sorted_items)
-ax.legend(sorted_handles, sorted_labels, loc='upper right', bbox_to_anchor=(1.5, 1.1))
-
-plt.tight_layout()
-plt.show()
-
-
-#%%
-
-plt.figure(figsize=(14, 7))
-sns.lineplot(
-    data=soft_accuracy_by_combined,
-    x='Noise Level',
-    y='soft_accuracy',
-    hue='Rel. Level',
-    style='Noise Area',
-    markers=True,
-    palette='tab10'
-)
-plt.title('Soft Accuracy vs Noise Level by Noise Area and Rel Level')
-plt.xlabel('Noise Level')
-plt.xticks([0, 0.5, 1])
-plt.ylabel('Soft Accuracy')
-plt.legend(title='Noise Area / Rel Level', bbox_to_anchor=(1.05, 1), loc='upper left')
-plt.tight_layout()
-plt.show()
-
-# Compute zero-noise baselines per relatedness level (target area only)
-soft_baselines = (
-    soft_accuracy_by_combined
-    .query("`Noise Area`=='target' and `Noise Level`==0")
-    .groupby('Rel. Level')['soft_accuracy']
-    .mean()
-    .to_dict()
-)
-
-areas = soft_accuracy_by_combined['Noise Area'].unique()
-levels = soft_accuracy_by_combined['Rel. Level'].unique()
-
-fig, axes = plt.subplots(1, len(areas), figsize=(5*len(areas), 4), sharey=True)
-for ax, area in zip(axes, areas):
-    sub = soft_accuracy_by_combined[soft_accuracy_by_combined['Noise Area'] == area]
-    if area == 'target':
-        sub = sub[sub['Noise Level'] > 0]
-
-    for lvl in levels:
-        s = sub[sub['Rel. Level'] == lvl]
-        line, = ax.plot(
-            s['Noise Level'], s['soft_accuracy'],
-            marker='o', label=lvl
-        )
-        color = line.get_color()
-        ax.axhline(
-            soft_baselines[lvl],
-            linestyle='--',
-            color=color,
-            linewidth=1,
-            alpha=1,
-            zorder=0,
-            label=f"{lvl} baseline"
-        )
-    ax.set_xticks([0.5, 1])
-    ax.set_title(area)
-    ax.set_xlabel('Noise Level')
-
-axes[-1].plot([], [], linestyle='--', color='gray', label='0 noise condition')
-axes[0].set_ylabel('Soft Accuracy')
-
-handles, labels = axes[-1].get_legend_handles_labels()
-by_label = dict(zip(labels[::2], handles[::2]))
-axes[-1].legend(
-    by_label.values(),
-    by_label.keys(),
-    bbox_to_anchor=(1.05, 1),
-    loc='upper left'
-)
-plt.suptitle("Soft Accuracy vs Noise Level by Noise Area and Relatedness Level", fontsize=16, y=1.02)
-plt.tight_layout()
-plt.show()
+#
+#plt.figure(figsize=(14, 7))
+#sns.lineplot(
+#    data=soft_accuracy_by_combined,
+#    x='Noise Level',
+#    y='soft_accuracy',
+#    hue='Rel. Level',
+#    style='Noise Area',
+#    markers=True,
+#    palette='tab10'
+#)
+#plt.title('Accuracy vs Noise Level by Noise Area and Rel Level')
+#plt.xlabel('Noise Level')
+#plt.xticks([0, 0.5, 1])
+#plt.ylabel('Soft Accuracy')
+#plt.legend(title='Noise Area / Rel Level', bbox_to_anchor=(1.05, 1), loc='upper left')
+#plt.tight_layout()
+#plt.show()
+#
+## Compute zero-noise baselines per relatedness level (target area only)
+#soft_baselines = (
+#    soft_accuracy_by_combined
+#    .query("`Noise Area`=='target' and `Noise Level`==0")
+#    .groupby('Rel. Level')['soft_accuracy']
+#    .mean()
+#    .to_dict()
+#)
+#
+#areas = soft_accuracy_by_combined['Noise Area'].unique()
+#levels = soft_accuracy_by_combined['Rel. Level'].unique()
+#
+#fig, axes = plt.subplots(1, len(areas), figsize=(5*len(areas), 4), sharey=True)
+#for ax, area in zip(axes, areas):
+#    sub = soft_accuracy_by_combined[soft_accuracy_by_combined['Noise Area'] == area]
+#    if area == 'target':
+#        sub = sub[sub['Noise Level'] > 0]
+#
+#    for lvl in levels:
+#        s = sub[sub['Rel. Level'] == lvl]
+#        line, = ax.plot(
+#            s['Noise Level'], s['soft_accuracy'],
+#            marker='o', label=lvl
+#        )
+#        color = line.get_color()
+#        ax.axhline(
+#            soft_baselines[lvl],
+#            linestyle='--',
+#            color=color,
+#            linewidth=1,
+#            alpha=1,
+#            zorder=0,
+#            label=f"{lvl} baseline"
+#        )
+#    ax.set_xticks([0.5, 1])
+#    ax.set_title(area)
+#    ax.set_xlabel('Noise Level')
+#
+#axes[-1].plot([], [], linestyle='--', color='gray', label='0 noise condition')
+#axes[0].set_ylabel('Accuracy')
+#
+#handles, labels = axes[-1].get_legend_handles_labels()
+#by_label = dict(zip(labels[::2], handles[::2]))
+#axes[-1].legend(
+#    by_label.values(),
+#    by_label.keys(),
+#    bbox_to_anchor=(1.05, 1),
+#    loc='upper left'
+#)
+#plt.suptitle("Accuracy vs Noise Level by Noise Area and Relatedness Level", fontsize=16, y=1.02)
+#plt.tight_layout()
+#plt.show()
 
 
 # Prepare radar data: include Noise Level
@@ -557,8 +572,8 @@ radar_data_soft = (
     soft_accuracy_by_combined
     .groupby(['Noise Area', 'Noise Level', 'Rel. Level'])['soft_accuracy']
     .mean()
-    .unstack('Rel. Level')  # Columns: Relatedness Level
-    .reset_index()
+   .unstack('Rel. Level')  # Columns: Relatedness Level
+   .reset_index()
 )
 
 categories = soft_accuracy_by_combined['Rel. Level'].unique().tolist()
@@ -583,22 +598,34 @@ ax.set_ylim(0, 1)
 ax.set_xticks(angles[:-1])
 ax.set_xticklabels(categories, fontsize=11)
 ax.tick_params(axis='x', pad=15)
-ax.set_title('Mean Soft Accuracy per Relatedness Level, Noise Area, and Noise Level', y=1.1)
+ax.set_title('Mean Accuracy per Relatedness Level, Noise Area, and Noise Level', y=1.1)
 
 # Radial ticks
 ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1])
 ax.set_yticklabels([str(t) for t in [0, 0.2, 0.4, 0.6, 0.8, 1]], fontsize=10)
 ax.yaxis.grid(True)
 
-# Sort legend so 'Noise 0' appears first
+# Legend sorted and placed outside the plot
 handles, labels = ax.get_legend_handles_labels()
 sorted_items = sorted(zip(labels, handles), key=lambda x: 0 if x[0] == 'Noise 0' else 1)
 sorted_labels, sorted_handles = zip(*sorted_items)
-ax.legend(sorted_handles, sorted_labels, loc='upper right', bbox_to_anchor=(1.5, 1.1))
 
+# Adjust subplot to make room for legend
+fig.subplots_adjust(right=0.75)  # Shrink plot to make room on the right
+
+ax.legend(
+    sorted_handles, 
+    sorted_labels, 
+    loc='upper left',
+    bbox_to_anchor=(1.05, 1.05),  # Fully outside on the right, vertically centered
+)
 plt.tight_layout()
 plt.show()
 
+#%%
+
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 #%% VISUALIZE
 # Filter dataset to only include rows with Noise Level == 0
@@ -614,36 +641,44 @@ models_1 = [
 models_2 = [
     'Salesforce/xgen-mm-phi3-mini-instruct-interleave-r-v1.5',
     'microsoft/kosmos-2-patch14-224',
-    'Qwen/Qwen2-VL-7B-Instruct',
 ]
 
-# Define a custom color palette
-custom_palette = {
-    'Qwen/Qwen2.5-VL-7B-Instruct': '#e6550d',   # warm orange
-    'Qwen/Qwen2-VL-7B-Instruct': '#31a354',     # green (as requested)
-    'allenai/Molmo-7B-D-0924': "#e91357",       # red
-    'llava-hf/llava-onevision-qwen2-7b-ov-hf': '#a63603',  # dark orange/brown
-    'llava-hf/llava-onevision-qwen2-0.5b-si-hf': '#7f2704', # deeper brown
-    'Salesforce/xgen-mm-phi3-mini-instruct-interleave-r-v1.5': '#1f77b4',  # blue (cold)
-    'microsoft/kosmos-2-patch14-224': '#6a51a3'  # deep purple (cold)
+# Define display names for legend
+display_name_map = {
+    'Qwen/Qwen2.5-VL-7B-Instruct': 'Qwen2.5-VL-7B',
+    'allenai/Molmo-7B-D-0924': 'Molmo-7B',
+    'llava-hf/llava-onevision-qwen2-7b-ov-hf': 'LLaVA-OneVision-7B',
+    'llava-hf/llava-onevision-qwen2-0.5b-si-hf': 'LLaVA-OneVision-0.5B',
+    'Salesforce/xgen-mm-phi3-mini-instruct-interleave-r-v1.5': 'XGen-MM-Phi3',
+    'microsoft/kosmos-2-patch14-224': 'Kosmos-2',
 }
 
+# Define a custom color palette with updated keys
+custom_palette = {
+    'Qwen2.5-VL-7B': '#e6550d',
+    'Molmo-7B': "#e91357",
+    'LLaVA-OneVision-7B': '#a63603',
+    'LLaVA-OneVision-0.5B': '#7f2704',
+    'XGen-MM-Phi3': '#1f77b4',
+    'Kosmos-2': '#6a51a3'
+}
 
-# Add a 'Model Size' column
+# Add 'Model Size' and display name columns
 df_zero_noise['Model Size'] = df_zero_noise['model_name'].apply(
     lambda x: 'Big' if x in models_1 else 'Small'
 )
+df_zero_noise['Model Display Name'] = df_zero_noise['model_name'].map(display_name_map)
 
-# Add a formatted label for display (optional)
-df_zero_noise['Model Display'] = df_zero_noise['Model Size'] + ' | ' + df_zero_noise['model_name']
-
-# Group data by 'Rel. Level', 'Model Size', and 'model_name'
-performance_by_zero_noise = df_zero_noise.groupby(['Rel. Level', 'Model Size', 'model_name'])[
+# Group data
+performance_by_zero_noise = df_zero_noise.groupby(
+    ['Rel. Level', 'Model Size', 'Model Display Name']
+)[
     ['scores', 'text_similarity_scores', 'long_caption_scores', 'long_caption_text_similarity_scores']
 ].median().reset_index()
 
-# Define custom x-axis order
+# Define x-axis and hue order
 rel_level_order = ['original', 'same target', 'high', 'medium', 'low']
+hue_order = [display_name_map[m] for m in models_1 + models_2]
 
 # Plot
 for score in ['long_caption_scores']:
@@ -652,22 +687,21 @@ for score in ['long_caption_scores']:
         data=performance_by_zero_noise,
         x='Rel. Level',
         y=score,
-        hue='model_name',
-        hue_order=models_1 + models_2,
+        hue='Model Display Name',
+        hue_order=hue_order,
         palette=custom_palette,
         order=rel_level_order,
         dodge=True
     )
 
-
-    # Horizontal grey lines at each y-tick
     ax.yaxis.grid(True, linestyle='-', color='grey', alpha=0.3)
-
-    ax.set_ylim(0.5, 0.85)
+    ax.set_ylim(0.65, 0.85)
     ax.set_title(f'RefCLIPScore at Noise Level 0 by Relatedness Level')
     ax.set_xlabel('Relatedness Level')
     ax.set_ylabel('RefCLIPScore')
-    ax.legend(title='Model', bbox_to_anchor=(1.05, 1), loc='upper left')
+    ax.legend(title='Model', loc='upper right')
     ax.tick_params(axis='x', rotation=45)
     plt.tight_layout()
     plt.show()
+
+# %%

@@ -2,12 +2,23 @@
 import pandas as pd
 import ast
 import matplotlib.pyplot as plt
+import seaborn as sns
 import numpy as np
 from tqdm import tqdm
 import os
 from pprint import pprint
 
 tqdm.pandas()
+
+plt.rcParams.update({
+    'axes.titlesize': 18,
+    'axes.labelsize': 16,
+    'xtick.labelsize': 14,
+    'ytick.labelsize': 14,
+    'legend.title_fontsize': 14,
+    'legend.fontsize': 12,
+    'font.size': 14  # base font size
+})
 
 separator = "\n\n##################################################\n##################################################\n\n"
 
@@ -121,7 +132,7 @@ merged_layers.rename(columns={'attn_ratio': 'attn_ratio_wrong'}, inplace=True)
 merged_layers.round(3)
 #%%
 # --- Compute mean attention ratio per layer grouped by condition ---
-grouped_means = grouped_means_correct
+grouped_means = grouped_means_wrong
 y_lim = 1
 
 # --- Filter and plot results for a specific noise level ---
@@ -213,14 +224,16 @@ for i, nl in enumerate(noise_levels):
 plt.tight_layout()
 plt.show()
 
-import matplotlib.pyplot as plt
-import seaborn as sns
 from matplotlib.colors import TwoSlopeNorm
+import matplotlib.gridspec as gridspec
 
 # precompute global stats to center the diverging map
 all_vals = grouped_means['attn_ratio']
 vmin, vmax = [0, 1]
-vcenter = all_vals.mean()
+#vcenter = all_vals.mean()
+#vcenter = grouped_means[grouped_means['Noise Level'] == 0.0]['attn_ratio'].mean()
+vcenter = 0.18 # avg of 0 noise all 
+print(f"vmin: {vmin}, vcenter: {vcenter}, vmax: {vmax}")
 noise_levels = [0.0, 0.5, 1.0]
 conditions = ['all', 'context', 'target']
 n_rows, n_cols = len(noise_levels), len(conditions)
@@ -246,6 +259,18 @@ for i, nl in enumerate(noise_levels):
             linecolor='gray',
             cbar=(j == n_cols - 1)
         )
+        if j == n_cols - 1:
+            cbar = ax.collections[0].colorbar
+            raw_ticks = np.arange(vmin, vmax + 0.01, 0.2)
+            ticks = [round(t, 2) for t in raw_ticks if abs(t - vcenter) >= 0.05]
+            ticks.append(round(vcenter, 2))
+            ticks = sorted(set(ticks))
+            cbar.set_ticks(ticks)
+            cbar.ax.set_yticklabels([
+                f"$\\bf{{{t:.2f}}}$" if np.isclose(t, vcenter) else f"{t:.2f}"
+                for t in ticks
+            ])
+
 
         if i == 0:
             ax.set_title(cond.capitalize(), fontsize=20)
@@ -253,10 +278,14 @@ for i, nl in enumerate(noise_levels):
             ax.set_ylabel(f'Noise={nl}\nRelevance', fontsize=16)
         else:
             ax.set_ylabel('')
+        ax.tick_params(axis='x', rotation=0)
         ax.set_xlabel('Layer', fontsize=16)
         ax.tick_params(labelsize=14)
 
+plt.subplots_adjust(right=0.90)
 plt.tight_layout()
 plt.show()
 
 
+
+# %%
