@@ -8,7 +8,7 @@ from pprint import pprint
 
 #%%
 # Specify the folder containing your CSV files
-file_path = '/home/fmerlo/data/sceneregstorage/eval_output/dataset_final_complete.csv'
+file_path = '/home/fmerlo/data/sceneregstorage/eval_output/dataset_final_final_complete.csv'
 
 # Read the CSV file into a DataFrame
 df = pd.read_csv(file_path)
@@ -25,6 +25,16 @@ plt.rcParams.update({
 })
 
 set(df['model_name'])
+
+#%%
+for i, (_, row) in enumerate(df.iterrows()):
+    if i > 100:
+        break
+    print('####')
+    print(row['image_name'])
+    print(row['original_target'])
+    print(row['output_clean'])
+    print(row['original_target_output_similarity'])
 #%%
 
 desired_models = [
@@ -105,22 +115,25 @@ for model, group in df_to_print.groupby('model_name'):
     print("\end{table}")
 
 #%%
+df.columns
+
+#%%
 # Hard Accuracy
-df_hard_accuracy['correct_hard'] = df_hard_accuracy['hard_accuracy'] == 1
-hard_accuracy_similarity = df_hard_accuracy.groupby(
-    ['Noise Area', 'Noise Level', 'Rel. Level', 'correct_hard']
+df['correct_soft'] = df['soft_accuracy'] == 1
+soft_accuracy_similarity = df.groupby(
+    ['Noise Area', 'Noise Level', 'Rel. Level', 'correct_soft']
 )[['scene_output_similarity']].mean().unstack()
-#)[['long_caption_text_similarity_scores', 'scene_output_similarity']].mean().unstack()
+#)[['original_target_output_similarity']].mean().unstack()
 
 
 # Renaming columns for clarity
 #hard_accuracy_similarity.columns = ['Target/Out. Incorrect', 'Target/Out. Correct', 'Scene/Out. Incorrect', 'Scene/Out. Correct']
 #hard_accuracy_similarity = hard_accuracy_similarity[['Target/Out. Correct', 'Target/Out. Incorrect', 'Scene/Out. Correct', 'Scene/Out. Incorrect']]
-hard_accuracy_similarity.columns = ['Incorrect', 'Correct']
-hard_accuracy_similarity = hard_accuracy_similarity[['Correct', 'Incorrect']]
+soft_accuracy_similarity.columns = ['Incorrect', 'Correct']
+soft_accuracy_similarity = soft_accuracy_similarity[['Correct', 'Incorrect']]
 
 
-merged_accuracy_similarity = hard_accuracy_similarity.reset_index()
+merged_accuracy_similarity = soft_accuracy_similarity.reset_index()
 merged_accuracy_similarity = merged_accuracy_similarity[
     ~((merged_accuracy_similarity['Noise Level'] == 0.0) & 
       (merged_accuracy_similarity['Noise Area'] != 'target'))
@@ -149,7 +162,6 @@ merged_accuracy_similarity = merged_accuracy_similarity.reset_index()
 
 #merged_accuracy_similarity = merged_accuracy_similarity[merged_accuracy_similarity['Noise Level'] != 1.0]
 merged_accuracy_similarity
-#%%
 
 # Melt the dataframe for seaborn compatibility
 df_melted = merged_accuracy_similarity.melt(
@@ -178,8 +190,8 @@ g = sns.catplot(
 
 # Customize the plotm
 for idx, ax in enumerate(g.axes.flat):
+    #ax.set_ylim(0.77, 0.86)
     ax.set_ylim(0.77, 0.86)
-
     if idx in [0,4,8,12,16]:
         ax.set_xticks([0])  
         ax.margins(x=0.9)

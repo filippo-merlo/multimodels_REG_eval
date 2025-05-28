@@ -105,6 +105,7 @@ print(df_exploded.shape[0])
 print(df_exploded_correct.shape[0])
 print(df_exploded_wrong.shape[0])
 
+grouped_means_complete = df_exploded.groupby(['Rel. Level', 'Noise Level', 'Noise Area', 'layer','soft_accuracy'])['attn_ratio'].mean().reset_index()
 grouped_means = df_exploded.groupby(['Rel. Level', 'Noise Level', 'Noise Area', 'layer'])['attn_ratio'].mean().reset_index()
 grouped_means_correct = df_exploded_correct.groupby(['Rel. Level', 'Noise Level', 'Noise Area', 'layer'])['attn_ratio'].mean().reset_index()
 grouped_means_wrong = df_exploded_wrong.groupby(['Rel. Level', 'Noise Level', 'Noise Area', 'layer'])['attn_ratio'].mean().reset_index()
@@ -129,7 +130,7 @@ merged_layers = grouped_layers.merge(
 # Rename columns explicitly to avoid naming issues
 merged_layers.rename(columns={'attn_ratio': 'attn_ratio_wrong'}, inplace=True)
 #%%
-merged_layers.round(3)
+print(merged_layers.round(3).to_latex(index=False))
 #%%
 # --- Compute mean attention ratio per layer grouped by condition ---
 grouped_means = grouped_means_wrong
@@ -287,5 +288,73 @@ plt.tight_layout()
 plt.show()
 
 
+#%%
+from matplotlib.colors import TwoSlopeNorm
+# ====== DELTAS ========
+# Merge on all relevant grouping keys
+merged = pd.merge(
+    grouped_means_correct,
+    grouped_means_wrong,
+    on=['Rel. Level', 'Noise Level', 'Noise Area', 'layer'],
+    suffixes=('_correct', '_wrong')
+)
 
-# %%
+# Compute the delta
+merged['attn_ratio_delta'] = merged['attn_ratio_correct'] - merged['attn_ratio_wrong']
+merged['abs_delta'] = merged['attn_ratio_delta'].abs()
+top_deltas = merged.sort_values(by='abs_delta', ascending=False).head(10)
+top_deltas
+#%%
+vmin, vmax = -0.25, 0.25  # adjust depending on your actual deltas
+vcenter = 0.0  # because we're plotting difference
+print(f"vmin: {vmin}, vcenter: {vcenter}, vmax: {vmax}")
+
+noise_levels = [0.0, 0.5, 1.0]
+conditions = ['all', 'context', 'target']
+n_rows, n_cols = len(noise_levels), len(conditions)
+
+fig, axes = plt.subplots(n_rows, n_cols, figsize=(5 * n_cols, 4 * n_rows), sharex=True, sharey=True)
+
+for i, nl in enumerate(noise_levels):
+    df_n = merged[merged['Noise Level'] == nl]
+    for j, cond in enumerate(conditions):
+        ax = axes[i, j]
+        df_nc = df_n[df_n['Noise Area'] == cond]
+        pivot = df_nc.pivot(index='Rel. Level', columns='layer', values='attn_ratio_delta')
+
+        norm = TwoSlopeNorm(vmin=vmin, vcenter=vcenter, vmax=vmax)
+
+        sns.heatmap(
+            pivot,
+            ax=ax,
+            annot=False,
+            cmap="PiYG",
+            norm=norm,
+            linewidths=0.5,
+            linecolor='gray',
+            cbar=(j == n_cols - 1)
+        )
+        if j == n_cols - 1:
+            cbar = ax.collections[0].colorbar
+            raw_ticks = np.linspace(vmin, vmax, 11)
+            ticks = [round(t, 2) for t in raw_ticks if abs(t - vcenter) >= 0.05]
+            ticks.append(round(vcenter, 2))
+            ticks = sorted(set(ticks))
+            cbar.set_ticks(ticks)
+            cbar.ax.set_yticklabels([
+                f"$\\bf{{{t:.2f}}}$" if np.isclose(t, vcenter) else f"{t:.2f}"
+                for t in ticks
+            ])
+
+        if i == 0:
+            ax.set_title(cond.capitalize(), fontsize=20)
+        if j == 0:
+            ax.set_ylabel(f'Noise={nl}\nRelevance', fontsize=16)
+        else:
+            ax.set_ylabel('')
+        ax.tick_params(axis='x', rotation=0)
+        ax.set_xlabel('Layer', fontsize=16)
+        ax.tick_params(labelsize=14)
+
+plt.tight_layout()
+plt.show()
