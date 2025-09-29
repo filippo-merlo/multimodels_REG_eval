@@ -15,11 +15,6 @@ from PIL import Image
 ## Add the directory to sys.path
 #directory = os.path.abspath("/home/filippo.merlo/caption_evaluation")
 #sys.path.insert(0, directory)
-#
-#from metrics.ensembeval_score import compute_ensembeval_score
-#with open('/home/filippo.merlo/caption_evaluation/ensemble_weights.json', 'r') as fp:
-#    weights = json.load(fp)
-
 
 def evaluate(model_name, data, images_n_p, device):
     # Load the model
