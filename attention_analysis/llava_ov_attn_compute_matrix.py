@@ -183,8 +183,6 @@ def convert_box(bbox):
     return [x, y, x+w, y+h]
 
 
-
-
 def aggregate_vit_attention(attn, select_layer):
     layer = attn[select_layer]
     layer_attns = layer.squeeze(0)
@@ -252,7 +250,6 @@ dataset_path = "/mnt/cimec-storage6/users/filippo.merlo/sceneREG_data/final_data
 # Specify the directory
 output_dir = "/mnt/cimec-storage6/users/filippo.merlo/sceneREG_data/attention_deployment"
 os.makedirs(output_dir, exist_ok=True)
-
 
 data = load_dataset(dataset_path)
 images_n_p = get_images_names_path(images_path)
