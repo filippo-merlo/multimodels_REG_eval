@@ -2,7 +2,8 @@
 import subprocess
 from scripts.manage_gpu import free_gpu_memory
 from scripts.data import load_dataset, get_images_names_path
-
+import torch
+import gc
 
 # model list 
 model_list = [
@@ -24,6 +25,9 @@ for model_name in model_list:
                     "--device", device],
                     check=True)
 
-    # Free GPU memory
-    free_gpu_memory()
+
+    # Run garbage collector to clear unused variables
+    gc.collect()
+    torch.cuda.empty_cache()
+
     print(f"Completed evaluation for {model_name}")
