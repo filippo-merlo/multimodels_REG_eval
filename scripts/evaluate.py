@@ -2,12 +2,13 @@
 from multimodels_REG_eval.scripts.models_scripts import load_model  # Assuming a load_model function is defined to load your model
 from data import load_dataset, get_images_names_path
 from utils import log_metrics, add_grey_background_and_rescale_bbox, add_gaussian_noise_in_bbox, add_gaussian_noise_outside_bbox, get_image_patch
-from config import *
+from multimodels_REG_eval.config import *
 from metrics import compute_metrics
 
 import pandas as pd
 import os
 from PIL import Image
+from config import *
 
 ## Add the directory to sys.path
 #directory = os.path.abspath("/home/filippo.merlo/caption_evaluation")
