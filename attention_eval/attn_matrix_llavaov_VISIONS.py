@@ -1,6 +1,7 @@
 #%%
-# How to use My LLAVA repo
+# Import  
 '''
+For this experiment I have used a sligtly modified version of LLaVA-NeXT (to allow for the extraction of attention maps from the visual backbone), available at:
 git clone https://github.com/filippo-merlo/LLaVA-NeXT.git
 cd LLaVA-NeXT
 conda create -n myenv python=3.10 -y
@@ -27,9 +28,10 @@ from io import BytesIO
 import requests
 import json
 import torch
+import pandas as pd
 from config import *
 
-# Utils for the task
+# Functions
 
 def log_metrics(model_name, metrics):
     log_path = f"outputs/logs/{model_name}_log.json"
@@ -39,11 +41,12 @@ def log_metrics(model_name, metrics):
 
 def add_grey_background_and_rescale_bbox(image_path, bbox):
     """
-    Adds a grey square background to the input image, centers the image on it,
-    and rescales the bounding box to correspond to the new image dimensions.
+    Resizes the input image to have a maximum width of 640 px (keeping aspect ratio),
+    rescales the bounding box accordingly, adds a grey square background,
+    and centers the resized image on it.
 
     Args:
-        image_path (ster): Path to input image.
+        image_path (str): Path to input image.
         bbox (tuple): A tuple describing the bounding box in the format (x, y, w, h).
 
     Returns:
@@ -52,24 +55,36 @@ def add_grey_background_and_rescale_bbox(image_path, bbox):
     """
     image = Image.open(image_path)
 
-    # Unpack the bounding box
+    # --- Step 1: Resize the image if width > 640 px ---
+    original_width, original_height = image.width, image.height
     x, y, w, h = bbox
 
-    # Determine the size of the new square background
+    if original_width > 640:
+        scale_factor = 640 / original_width
+        new_width = 640
+        new_height = int(original_height * scale_factor)
+
+        # Resize the image
+        image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+        # Rescale the bounding box
+        x = int(x * scale_factor)
+        y = int(y * scale_factor)
+        w = int(w * scale_factor)
+        h = int(h * scale_factor)
+
+    # --- Step 2: Add grey square background ---
     max_dim = max(image.width, image.height)
     new_size = (max_dim, max_dim)
 
-    # Create a new grey background image
     grey_background = Image.new("RGB", new_size, color=(128, 128, 128))
 
-    # Calculate the position to center the original image
+    # Center the image on the background
     offset_x = (max_dim - image.width) // 2
     offset_y = (max_dim - image.height) // 2
-
-    # Paste the original image onto the grey background
     grey_background.paste(image, (offset_x, offset_y))
 
-    # Rescale the bounding box to the new image dimensions
+    # Adjust bounding box to new centered position
     new_bbox = (x + offset_x, y + offset_y, w, h)
 
     return grey_background, new_bbox
@@ -167,7 +182,6 @@ def aggregate_vit_attention(attn, select_layer):
     del layer, layer_attns, attns_per_head
     return result.cpu()
 
-
 def load_image(image_path_or_url):
     if image_path_or_url.startswith('http://') or image_path_or_url.startswith('https://'):
         response = requests.get(image_path_or_url)
@@ -175,7 +189,6 @@ def load_image(image_path_or_url):
     else:
         image = Image.open(image_path_or_url).convert('RGB')
     return image
-
 
 def show_mask_on_image(img, mask):
     img = np.float32(img) / 255
@@ -185,13 +198,50 @@ def show_mask_on_image(img, mask):
     cam = cam / np.max(cam)
     return np.uint8(255 * cam), heatmap
 
-# ===> specify the model path
+# Load Image And Load Data
+def get_images_names_path(images_path):
+    # Load and preprocess images
+    images_n_p = {}
+    for filename in os.listdir(images_path):
+        if filename.endswith('.jpg'):
+            images_n_p[filename] = os.path.join(images_path, filename)
+    return images_n_p
+
+
+def convert_to_bbox_format(df):
+    """
+    Convert corner coordinates in a DataFrame to [x1, y1, x2, y2] format.
+    
+    Args:
+        df: Pandas DataFrame with columns ['scene_id', 'object', 'x', 'y']
+            Each bounding box is defined by 4 corner points.
+
+    Returns:
+        A DataFrame with columns ['scene_id', 'object', 'bbox']
+        where bbox is a list [x1, y1, x2, y2].
+    """
+    bbox_list = (
+        df.groupby(['scene', 'obj'])
+          .apply(lambda g: [g['x'].min(), g['y'].min(),
+                            g['x'].max(), g['y'].max()])
+          .reset_index(name='bbox')
+    )
+    return bbox_list
+
+def get_bbox_data(bbox_dataset_path):
+    """Load bounding box data from a CSV file without using any column as the index."""
+    return convert_to_bbox_format(pd.read_csv(bbox_dataset_path))
+
+# Load the CSV
+bbox_data = get_bbox_data(os.path.join(dataset_path, 'S1_boundingbox_critical_object.csv'))
+
+
+# load the model
 pretrained = "lmms-lab/llava-onevision-qwen2-0.5b-si"
 model_name = "llava_qwen"
 device = "cuda"
 device_map = "auto"
 
-# load the model
 load_8bit = False
 load_4bit = False
 
@@ -205,32 +255,17 @@ llava_model_args = {
 tokenizer, model, image_processor, max_length = load_pretrained_model(pretrained, None, model_name, **llava_model_args, cache_dir=cache_dir, device_map=device_map)
 model.eval()
 
-# Load Image And Load Data
-def load_dataset(dataset_path):
-    # Load and preprocess data
-    with open(dataset_path, 'r') as f:
-        return json.load(f)
-
-def get_images_names_path(images_path):
-    # Load and preprocess images
-    images_n_p = {}
-    for filename in os.listdir(images_path):
-        if filename.endswith('.jpg'):
-            images_n_p[filename] = os.path.join(images_path, filename)
-    return images_n_p
+# load data
 
 
-# Specify the directory
-
-#data = load_dataset(dataset_path)
-#%%
+# Select which images to keep
+include = ['l']#, 'r', 'sl', 'sr']
 images_n_p_full = get_images_names_path(images_path)
-images_n_p_filt = {}
+images_n_p = {}
 for image_name, image_path in get_images_names_path(images_path).items():
-    if image_name.split('_')[3] == 'l':
-        images_n_p_filt[image_name] = image_path
-len(images_n_p_filt)
-#%%
+    if image_name.split('_')[3] in include:
+        images_n_p[image_name.replace('.jpg', '')] = image_path
+
 noise_levels = [0.0]
 conditions = ['target_noise']
 
@@ -239,27 +274,19 @@ vis_attn_matrix_average = []
 for condition in conditions:
   for noise_level in noise_levels:
     for image_name, image_path  in tqdm(list(images_n_p.items())):
-      if data[image_name]['excluded']:
-        continue
 
-      bbox = data[image_name]['target_bbox']
-
-      if '_original.jpg' in image_name:
-          target = data[image_name]['target'].replace('_', ' ')
-
-      elif '_clean.jpg' in image_name:
-          continue # skip clean images
-
-      else:
-          target = data[image_name]['swapped_object'].replace('_', ' ')
+      bbox = bbox_data[bbox_data['scene'] == image_name]['bbox'].values[0]
+      print(bbox)
+      target = image_name.split('_')[4]
 
       original_image = load_image(image_path)
       original_image_size = original_image.size
 
-      if original_image_size[0] != 640: ###!!!
-          continue
+      #if original_image_size[0] != 640: ###!!!
+      #    continue
 
       # get the image with a grey background and the bounding box rescaled
+      # in this function the image is also resized to have a maximum w of 640px
       image, bbox = add_grey_background_and_rescale_bbox(image_path, bbox)
 
 
@@ -328,8 +355,7 @@ for condition in conditions:
 
           vis_attn_matrix = aggregate_vit_attention(
               att_on_whole_image,
-              select_layer=layer,
-              all_prev_layers=False
+              select_layer=layer
           )
           vis_attn_matrix_per_layers.append(vis_attn_matrix)
           del vis_attn_matrix
@@ -353,6 +379,6 @@ for condition in conditions:
 
 print(vis_attn_matrix_average)
 print(vis_attn_matrix_average.size())
-output_tensor_path = os.path.join(output_dir, "vis_attn_matrix_average.pt")
+output_tensor_path = os.path.join(output_dir, "vis_attn_matrix_average_VISIONS.pt")
 torch.save(vis_attn_matrix_average, output_tensor_path)
 print(f"vis_attn_matrix_average saved at {output_tensor_path}")
