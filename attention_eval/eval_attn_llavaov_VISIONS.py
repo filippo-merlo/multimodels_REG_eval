@@ -11,24 +11,15 @@ Original file is located at
 #!pip install -U git+https://github.com/filippo-merlo/LLaVA-NeXT.git
 
 import os
-import sys
 import gc
 from tqdm import tqdm
-
-import numpy as np
-# %matplotlib inline
-import cv2
-from PIL import Image
-from pprint import pprint
 import copy
-from io import BytesIO
-import requests
-import json
 import torch
 import torch.nn.functional as F
 import pandas as pd
-import math
 
+from config_attn_analysis import *
+from utils_attn_analysis import *
 
 from llava.constants import IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
 from llava.conversation import conv_templates, SeparatorStyle
@@ -36,217 +27,7 @@ from llava.model.builder import load_pretrained_model
 from llava.utils import disable_torch_init
 from llava.mm_utils import process_images, tokenizer_image_token, get_model_name_from_path
 
-from typing import Dict
-from functools import partial, reduce
-from PIL import Image
-from transformers.image_processing_utils import get_size_dict
-from transformers.image_transforms import (
-    convert_to_rgb,
-    normalize,
-    rescale,
-    resize,
-    to_channel_dimension_format,
-)
-from transformers.image_utils import ChannelDimension, to_numpy_array, PILImageResampling
-from transformers.utils import ModelOutput
 
-# Utils for the task
-
-def log_metrics(model_name, metrics):
-    log_path = f"outputs/logs/{model_name}_log.json"
-    with open(log_path, 'w') as f:
-        json.dump(metrics, f)
-    print(f"Logged metrics for {model_name}")
-
-
-def add_grey_background_and_rescale_bbox(image_path, bbox):
-    """
-    Adds a grey square background to the input image, centers the image on it,
-    and rescales the bounding box to correspond to the new image dimensions.
-
-    Args:
-        image_path (ster): Path to input image.
-        bbox (tuple): A tuple describing the bounding box in the format (x, y, w, h).
-
-    Returns:
-        PIL.Image.Image: The new image with a grey background.
-        tuple: The rescaled bounding box in the format (x, y, w, h).
-    """
-    image = Image.open(image_path)
-
-    # Unpack the bounding box
-    x, y, w, h = bbox
-
-    # Determine the size of the new square background
-    max_dim = max(image.width, image.height)
-    new_size = (max_dim, max_dim)
-
-    # Create a new grey background image
-    grey_background = Image.new("RGB", new_size, color=(128, 128, 128))
-
-    # Calculate the position to center the original image
-    offset_x = (max_dim - image.width) // 2
-    offset_y = (max_dim - image.height) // 2
-
-    # Paste the original image onto the grey background
-    grey_background.paste(image, (offset_x, offset_y))
-
-    # Rescale the bounding box to the new image dimensions
-    new_bbox = (x + offset_x, y + offset_y, w, h)
-
-    return grey_background, new_bbox
-
-def add_gaussian_noise_in_bbox(image, bbox, noise_level=0.0):
-
-    # Add noise to the image within the bounding box
-    image_np = np.array(image)
-
-    # Box notation [x, y, w, h]
-    x, y, w, h = map(int, bbox)
-
-    # Ensure the bounding box is within the image dimensions
-    x_end = min(x + w, image_np.shape[1])
-    y_end = min(y + h, image_np.shape[0])
-
-    # Extract the region of interest
-    roi = image_np[y:y_end, x:x_end]
-
-    # Generate Gaussian noise
-    noise = np.random.normal(loc=0, scale=255*noise_level, size=roi.shape)
-
-    # Add noise to the region of interest
-    noisy_roi = roi + noise
-
-    # Clip values to be valid pixel values
-    noisy_roi = np.clip(noisy_roi, 0, 255).astype(np.uint8)
-
-    # Replace the original region with the noisy one
-    image_np[y:y_end, x:x_end] = noisy_roi
-
-    # Convert back to PIL Image
-    noisy_image = Image.fromarray(image_np)
-
-    return noisy_image
-
-def add_gaussian_noise_outside_bbox(image, bbox, noise_level=0.0):
-    """
-    Adds Gaussian noise to an image only outside the specified bounding box.
-
-    Parameters:
-        image (PIL.Image.Image): Input image.
-        bbox (tuple): Bounding box in the format (x, y, w, h).
-        noise_level (float): The standard deviation of the Gaussian noise as a fraction of the intensity range (0-1).
-
-    Returns:
-        PIL.Image.Image: Image with Gaussian noise applied outside the bounding box.
-    """
-    # Convert the image to a numpy array
-    image_np = np.array(image)
-
-    # Extract the bounding box coordinates
-    x, y, w, h = map(int, bbox)
-    x_end = min(x + w, image_np.shape[1])
-    y_end = min(y + h, image_np.shape[0])
-
-    # Create a mask for the bounding box region
-    mask = np.zeros_like(image_np, dtype=bool)
-    mask[y:y_end, x:x_end] = True
-
-    # Generate Gaussian noise
-    noise = np.random.normal(loc=0, scale=255 * noise_level, size=image_np.shape)
-
-    # Apply noise only where the mask is False (outside the bbox)
-    noisy_image_np = np.where(mask, image_np, image_np + noise)
-
-    # Clip pixel values to ensure they are valid
-    noisy_image_np = np.clip(noisy_image_np, 0, 255).astype(np.uint8)
-
-    # Convert the numpy array back to a PIL Image
-    noisy_image = Image.fromarray(noisy_image_np)
-
-    return noisy_image
-
- # Normalize box diamentions
-
-def normalize_box(bbox, image_width=1025, image_height=1025):
-    return (
-        round(float(bbox[0] / image_width), 4),
-        round(float(bbox[1] / image_height), 4),
-        round(float(bbox[2] / image_width), 4),
-        round(float(bbox[3] / image_height), 4),
-    )
-
-def convert_box(bbox):
-    x, y, w, h = tuple(bbox) # Box coordinates are in (left, top, width, height) format
-    return [x, y, x+w, y+h]
-
-# many are copied from https://github.com/mattneary/attention/blob/master/attention/attention.py
-# here it nullifies the attention over the first token (<bos>)
-# which in practice we find to be a good idea
-
-
-def aggregate_llm_attention(attn):
-    '''Extract average attention vector'''
-    avged = []
-    for layer in attn:
-        layer_attns = layer.squeeze(0)
-        attns_per_head = layer_attns.mean(dim=0)
-        vec = torch.concat((
-            # We zero the first entry because it's what's called
-            # null attention (https://aclanthology.org/W19-4808.pdf)
-            torch.tensor([0.]),
-            # usually there's only one item in attns_per_head but
-            # on the first generation, there's a row for each token
-            # in the prompt as well, so take [-1]
-            attns_per_head[-1][1:].cpu(),
-            # attns_per_head[-1].cpu(),
-            # add zero for the final generated token, which never
-            # gets any attention
-            #torch.tensor([0.]),
-        ))
-        avged.append(vec / vec.sum())
-    return torch.stack(avged).mean(dim=0)
-
-
-def aggregate_vit_attention_subtract_avg(attn, attn_avg, select_layer=-2):
-        # For single layer mode, return adjusted attention for the selected layer
-        selected_layer = attn[select_layer]
-        layer_attns = selected_layer.squeeze(0)
-        attns_per_head = layer_attns.mean(dim=0)
-        vec = attns_per_head[0:, 0:].cpu()
-        vec_normalized = vec / vec.sum(-1, keepdim=True)
-        #attn_avg = attn_avg[i] / attn_avg[i].sum(-1, keepdim=True) # good idea to normalize?
-        return torch.relu(vec_normalized - attn_avg[i])
-
-
-def heterogenous_stack(vecs):
-    '''Pad vectors with zeros then stack'''
-    max_length = max(v.shape[0] for v in vecs)
-    return torch.stack([
-        torch.concat((v, torch.zeros(max_length - v.shape[0])))
-        for v in vecs
-    ])
-
-
-def load_image(image_path_or_url):
-    if image_path_or_url.startswith('http://') or image_path_or_url.startswith('https://'):
-        response = requests.get(image_path_or_url)
-        image = Image.open(BytesIO(response.content)).convert('RGB')
-    else:
-        image = Image.open(image_path_or_url).convert('RGB')
-    return image
-
-
-def show_mask_on_image(img, mask):
-    img = np.float32(img) / 255
-    heatmap = cv2.applyColorMap(np.uint8(255 * mask), cv2.COLORMAP_HSV)
-    hm = np.float32(heatmap) / 255
-    cam = hm + np.float32(img)
-    cam = cam / np.max(cam)
-    return np.uint8(255 * cam), heatmap
-
-
-import os
 # Set CUDA_VISIBLE_DEVICES to use GPU 1
 #os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
@@ -254,7 +35,6 @@ import os
 pretrained = "lmms-lab/llava-onevision-qwen2-0.5b-si"
 model_name = "llava_qwen"
 device = "cuda"
-cache_dir = '/home/fmerlo/data/sceneregstorage/models/hf_llms_checkpoints'
 device_map = "auto"
 
 # load the model
@@ -271,26 +51,6 @@ llava_model_args = {
 tokenizer, model, image_processor, max_length = load_pretrained_model(pretrained, None, model_name, **llava_model_args, cache_dir=cache_dir, device_map=device_map)
 model.eval()
 
-# Load Image And Load Data
-def load_dataset(dataset_path):
-    # Load and preprocess data
-    with open(dataset_path, 'r') as f:
-        return json.load(f)
-
-def get_images_names_path(images_path):
-    # Load and preprocess images
-    images_n_p = {}
-    for filename in os.listdir(images_path):
-        if filename.endswith('.jpg'):
-            images_n_p[filename] = os.path.join(images_path, filename)
-    return images_n_p
-
-images_path = "/home/fmerlo/data/sceneregstorage/COOCO_dataset/COOCO_images"
-dataset_path = "/home/fmerlo/data/sceneregstorage/COOCO_dataset/COOCO_data_new.json"
-# Specify the directory
-output_dir = "/home/fmerlo/data/sceneregstorage/sceneREG_data/attention_deployment"
-os.makedirs(output_dir, exist_ok=True)
-
 # whole dataset avg visual attention matrix
 
 avg_vis_attn_matrix_path = '/home/fmerlo/data/sceneregstorage/sceneREG_data/attention_deployment/vis_attn_matrix_average.pt'
@@ -304,12 +64,6 @@ conditions = ['target_noise','context_noise','all_noise']
 evaluation_results = []
 
 results_list = []
-
-# Function to monitor GPU memory
-def log_gpu_usage():
-    print(f"Allocated memory: {torch.cuda.memory_allocated() / 1e6} MB")
-    print(f"Cached memory: {torch.cuda.memory_reserved() / 1e6} MB")
-
 
 for condition in tqdm(conditions, desc="conditions"):
   for noise_level in tqdm(noise_levels, desc="noise lev"):
