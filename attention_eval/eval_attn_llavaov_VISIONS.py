@@ -20,6 +20,7 @@ import pandas as pd
 
 from config_attn_analysis import *
 from utils_attn_analysis import *
+from metrics import compute_metrics
 
 from llava.constants import IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
 from llava.conversation import conv_templates, SeparatorStyle
@@ -30,6 +31,7 @@ from llava.mm_utils import process_images, tokenizer_image_token, get_model_name
 
 # Set CUDA_VISIBLE_DEVICES to use GPU 1
 #os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
 
 # ===> specify the model path
 pretrained = "lmms-lab/llava-onevision-qwen2-0.5b-si"
@@ -53,11 +55,19 @@ model.eval()
 
 # whole dataset avg visual attention matrix
 
-avg_vis_attn_matrix_path = '/home/fmerlo/data/sceneregstorage/sceneREG_data/attention_deployment/vis_attn_matrix_average.pt'
 avg_vis_attn_matrix = torch.load(avg_vis_attn_matrix_path)
 
-data = load_dataset(dataset_path)
-images_n_p = get_images_names_path(images_path)
+# Load the CSV with the bounding box data
+bbox_data = get_bbox_data(dataset_path)
+
+# Select which images to keep
+images_n_p_full = get_images_names_path(images_path)
+include = ['l', 'r']#, 'sl', 'sr']
+images_n_p = {}
+for image_name, image_path in get_images_names_path(images_path).items():
+    if image_name.split('_')[3] in include:
+        images_n_p[image_name.replace('.jpg', '')] = image_path
+
 
 noise_levels = [0.0, 0.5, 1.0]
 conditions = ['target_noise','context_noise','all_noise']
@@ -73,28 +83,21 @@ for condition in tqdm(conditions, desc="conditions"):
       continue
 
     for image_name, image_path  in tqdm(list(images_n_p.items()), desc="images"):
-      if data[image_name]['excluded']:
-        continue
 
-      bbox = data[image_name]['target_bbox']
-      
-      if '_original.jpg' in image_name:
-          target = data[image_name]['target'].replace('_', ' ')
-
-      elif '_clean.jpg' in image_name:
-          continue # skip clean images
-
-      else:
-          target = data[image_name]['swapped_object'].replace('_', ' ')
-
-      original_image = load_image(image_path)
-      original_image_size = original_image.size
-
-      if original_image_size[0] != 640: ###!!!
-          continue
+      bbox = bbox_data[bbox_data['scene'] == image_name]['bbox'].values[0]
+      target = image_name.split('_')[4]
+      scene = image_name.split('_')[0]
+      rel_level = image_name.split('_')[2]
 
       # get the image with a grey background and the bounding box rescaled
-      image, bbox = add_grey_background_and_rescale_bbox(image_path, bbox)
+      image, bbox, original_image_size = rescale_image_add_grey_background_and_rescale_bbox(image_path, bbox, 640)
+
+      image_patch = get_image_patch(image, bbox)
+      temporary_save_path_image_patch = os.path.join(temporary_save_dir,f'image_patch_{image_name}')
+      if not os.path.exists(temporary_save_path_image_patch):
+          image_patch.save(temporary_save_path_image_patch)
+      # load patch
+      image_patch = Image.open(temporary_save_path_image_patch)
 
       # get the image with the corresponding noise level in the roi
       if condition == 'target_noise':
@@ -145,6 +148,32 @@ for condition in tqdm(conditions, desc="conditions"):
         del image_tensor
 
         text = tokenizer.decode(outputs["sequences"][0]).strip()
+
+        if text.startswith("a "):
+            text_ed = text[2:]
+        elif text.startswith("an "):
+            text_ed = text[3:]
+
+        common_prefix = 'A photo depicts '
+
+        if target[0] in ['a', 'e', 'i', 'o', 'u']:
+            complete_prefix = common_prefix + 'an '
+            long_target = complete_prefix + target
+        else:
+            complete_prefix = common_prefix + 'a '
+            long_target = complete_prefix + target
+
+        if text_ed[0] in ['a', 'e', 'i', 'o', 'u']:
+            complete_prefix = common_prefix + 'an '
+            long_output = complete_prefix + text_ed
+        else:
+            complete_prefix = common_prefix + 'a '
+            long_output = complete_prefix + text_ed
+        
+        
+        ref_clip_score, text_similarity_score = compute_metrics(text_ed,target,image_patch)
+        long_caption_ref_clip_score, long_caption_text_similarity_score = compute_metrics(long_output,long_target,image_patch)
+
 
         # constructing the llm attention matrix
         aggregated_prompt_attention = []
@@ -333,14 +362,21 @@ for condition in tqdm(conditions, desc="conditions"):
             "condition": condition,
             "noise_level": noise_level,
             "target": target,
+            "long_target": long_target,
             "bbox": bbox,
             "output_text": text,
+            "long_output_text": long_output,
+            "output_text_edited": text_ed,
+            "ref_clip_score": ref_clip_score,
+            "text_similarity_score": text_similarity_score,
+            "long_caption_ref_clip_score": long_caption_ref_clip_score,
+            "long_caption_text_similarity_score": long_caption_text_similarity_score,
             "grid_size": model.get_vision_tower().num_patches_per_side,
             "image_size": image.size,
             "original_image_size": original_image_size,
-            'scene': data[image_name]['scene'],
-            'rel_score': data[image_name]['rel_score'],
-            'rel_level': data[image_name]['rel_level'],
+            'scene': scene,
+            'rel_score': None,
+            'rel_level': rel_level,
             'target_area': target_area,
             'tot_area': tot_area,
             'context_area': context_area,
@@ -366,7 +402,7 @@ for condition in tqdm(conditions, desc="conditions"):
     results_df = pd.DataFrame(results_list)
 
     # Define the file path
-    output_file = os.path.join(output_dir, "results_att_deployment_last.csv")
+    output_file = os.path.join(output_dir, "results_att_deployment_VISIONS.csv")
 
     # Save the DataFrame to a CSV file
     results_df.to_csv(output_file, index=False)

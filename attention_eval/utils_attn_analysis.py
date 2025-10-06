@@ -106,7 +106,7 @@ def rescale_image_add_grey_background_and_rescale_bbox(image_path, bbox, max_wid
     # Adjust bounding box to new centered position
     new_bbox = (x + offset_x, y + offset_y, w, h)
 
-    return grey_background, new_bbox
+    return grey_background, new_bbox, (new_width, new_height)
 
 def add_gaussian_noise_in_bbox(image, bbox, noise_level=0.0):
 
@@ -304,3 +304,21 @@ def convert_to_bbox_format(df):
 def get_bbox_data(bbox_dataset_path):
     """Load bounding box data from a CSV file without using any column as the index."""
     return convert_to_bbox_format(pd.read_csv(bbox_dataset_path))
+
+def get_image_patch(image, bbox):
+    """
+    Extract a patch from an image based on a bounding box.
+    
+    Parameters:
+        image (PIL.Image.Image): The input image.
+        bbox (list or tuple): The bounding box in the format [x, y, w, h], 
+                              where (x, y) is the top-left corner, and 
+                              w and h are the width and height.
+                              
+    Returns:
+        PIL.Image.Image: The cropped image patch.
+    """
+    x, y, w, h = bbox
+    # Define the cropping box as (left, upper, right, lower)
+    crop_box = (x, y, x + w, y + h)
+    return image.crop(crop_box)
