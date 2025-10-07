@@ -283,7 +283,7 @@ def load_dataset(dataset_path):
     
 def convert_to_bbox_format(df):
     """
-    Convert corner coordinates in a DataFrame to [x1, y1, x2, y2] format.
+    Convert corner coordinates in a DataFrame to [x, y, w, h] format.
     
     Args:
         df: Pandas DataFrame with columns ['scene_id', 'object', 'x', 'y']
@@ -291,12 +291,12 @@ def convert_to_bbox_format(df):
 
     Returns:
         A DataFrame with columns ['scene_id', 'object', 'bbox']
-        where bbox is a list [x1, y1, x2, y2].
+        where bbox is a list [x, y, w, h].
     """
     bbox_list = (
         df.groupby(['scene', 'obj'])
           .apply(lambda g: [g['x'].min(), g['y'].min(),
-                            g['x'].max(), g['y'].max()])
+                            g['x'].max() - g['x'].min(), g['y'].max() - g['y'].min()])
           .reset_index(name='bbox')
     )
     return bbox_list

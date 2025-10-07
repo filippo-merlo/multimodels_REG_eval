@@ -1,3 +1,4 @@
+#%%
 # -*- coding: utf-8 -*-
 """LLaVA_ov_attn_eval.ipynb
 
@@ -89,11 +90,18 @@ for condition in tqdm(conditions, desc="conditions"):
       scene = image_name.split('_')[0]
       rel_level = image_name.split('_')[2]
 
+      #print('oringinal bbox', bbox)
+
       # get the image with a grey background and the bounding box rescaled
       image, bbox, original_image_size = rescale_image_add_grey_background_and_rescale_bbox(image_path, bbox, 640)
 
+      #print('rescaled bbox', bbox)
+      #print('original image size', original_image_size)
+      #print('image size', image.size)
+
       image_patch = get_image_patch(image, bbox)
-      temporary_save_path_image_patch = os.path.join(temporary_save_dir,f'image_patch_{image_name}')
+
+      temporary_save_path_image_patch = os.path.join(temporary_save_dir,f'image_patch_{image_name}.jpg')
       if not os.path.exists(temporary_save_path_image_patch):
           image_patch.save(temporary_save_path_image_patch)
       # load patch
@@ -114,6 +122,8 @@ for condition in tqdm(conditions, desc="conditions"):
       H = image.size[1]
       normalized_bbox = normalize_box(convert_box(bbox), W, H)
       x1, y1, x2, y2 = normalized_bbox
+
+      print("Normalized bbox:", normalized_bbox)
 
       with torch.inference_mode():
 
@@ -148,11 +158,13 @@ for condition in tqdm(conditions, desc="conditions"):
         del image_tensor
 
         text = tokenizer.decode(outputs["sequences"][0]).strip()
+        text_ed = text.replace('<|im_end|>', '')
 
-        if text.startswith("a "):
-            text_ed = text[2:]
-        elif text.startswith("an "):
-            text_ed = text[3:]
+        if text_ed.startswith("a "):
+            text_ed = text_ed[2:]
+        elif text_ed.startswith("an "):
+            text_ed = text_ed[3:]
+
 
         common_prefix = 'A photo depicts '
 
@@ -174,6 +186,13 @@ for condition in tqdm(conditions, desc="conditions"):
         ref_clip_score, text_similarity_score = compute_metrics(text_ed,target,image_patch)
         long_caption_ref_clip_score, long_caption_text_similarity_score = compute_metrics(long_output,long_target,image_patch)
 
+        print("\n")
+        print(f"Image: {image_name}, Condition: {condition}, Noise level: {noise_level}")
+        print(f"Target: {target}, Model output: {text_ed}")
+        print(f"Ref CLIP score: {ref_clip_score}, Text similarity score: {text_similarity_score}")
+        print(f"Long caption target: {long_target}, Long caption output: {long_output}")
+        print(f"Long caption Ref CLIP score: {long_caption_ref_clip_score}, Long caption Text similarity score: {long_caption_text_similarity_score}")
+        print("\n")
 
         # constructing the llm attention matrix
         aggregated_prompt_attention = []
@@ -285,10 +304,10 @@ for condition in tqdm(conditions, desc="conditions"):
 
                 # Upsample to match the original image size
                 attn_over_image = F.interpolate(
-                    attn_over_image.unsqueeze(0).unsqueeze(0),
+                    attn_over_image.to(torch.float32).unsqueeze(0).unsqueeze(0),
                     size=image.size, 
                     mode='nearest',
-                ).squeeze()
+                ).squeeze().to(torch.float16)
 
                 # Accumulate attention maps to average over tokens
                 if attn_over_image_final is None:
@@ -301,7 +320,7 @@ for condition in tqdm(conditions, desc="conditions"):
 
             # METRICS
 
-            attn_over_image = attn_over_image_final.to(torch.float64)
+            attn_over_image = attn_over_image_final.to(torch.float16)
 
             x_min, y_min, w, h = bbox ### bbox
 

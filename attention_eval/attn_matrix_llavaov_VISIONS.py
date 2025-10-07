@@ -23,9 +23,6 @@ from llava.utils import disable_torch_init
 from llava.mm_utils import process_images, tokenizer_image_token, get_model_name_from_path
 
 
-# Load the CSV
-bbox_data = get_bbox_data(dataset_path)
-
 # load the model
 pretrained = "lmms-lab/llava-onevision-qwen2-0.5b-si"
 model_name = "llava_qwen"
@@ -45,6 +42,9 @@ llava_model_args = {
 tokenizer, model, image_processor, max_length = load_pretrained_model(pretrained, None, model_name, **llava_model_args, cache_dir=cache_dir, device_map=device_map)
 model.eval()
 
+# Load the CSV with the bounding box data
+bbox_data = get_bbox_data(dataset_path)
+
 # Select which images to keep
 images_n_p_full = get_images_names_path(images_path)
 include = ['l', 'r']#, 'sl', 'sr']
@@ -63,12 +63,17 @@ for condition in conditions:
     for image_name, image_path  in tqdm(list(images_n_p.items())):
 
       bbox = bbox_data[bbox_data['scene'] == image_name]['bbox'].values[0]
-      print(bbox)
       target = image_name.split('_')[4]
 
       # get the image with a grey background and the bounding box rescaled
       # in this function the image is also resized to have a maximum w of 640px
-      image, bbox = rescale_image_add_grey_background_and_rescale_bbox(image_path, bbox, 640)
+      image, bbox, original_image_size = rescale_image_add_grey_background_and_rescale_bbox(image_path, bbox, 640)
+
+      image_patch = get_image_patch(image, bbox)
+
+      temporary_save_path_image_patch = os.path.join(temporary_save_dir,f'image_patch_{image_name}.jpg')
+      if not os.path.exists(temporary_save_path_image_patch):
+          image_patch.save(temporary_save_path_image_patch)
 
       # get the image with the corresponding noise level in the roi
       if condition == 'target_noise':

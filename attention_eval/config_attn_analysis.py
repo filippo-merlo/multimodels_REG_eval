@@ -13,6 +13,6 @@ model_dir = os.path.join(data_dir_path, 'cache_regScene_eval')
 cache_dir = os.path.join(data_dir_path, 'cache_regScene_eval')
 output_dir = os.path.join(data_dir_path, 'attn_eval_output')
 
-temporary_save_dir = os.path.join(data_dir_path, 'temporary_save')
+temporary_save_dir = os.path.join(data_dir_path, 'sceneREG_data/temporary_save')
 
 avg_vis_attn_matrix_path = os.path.join(output_dir, 'vis_attn_matrix_average_VISIONS.pt')
