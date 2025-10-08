@@ -104,6 +104,7 @@ for condition in tqdm(conditions, desc="conditions"):
       temporary_save_path_image_patch = os.path.join(temporary_save_dir,f'image_patch_{image_name}.jpg')
       if not os.path.exists(temporary_save_path_image_patch):
           image_patch.save(temporary_save_path_image_patch)
+          
       # load patch
       image_patch = Image.open(temporary_save_path_image_patch)
 
