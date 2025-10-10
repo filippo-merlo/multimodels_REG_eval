@@ -68,7 +68,7 @@ for condition in conditions:
       # get the image with a grey background and the bounding box rescaled
       # in this function the image is also resized to have a maximum w of 640px
       image, bbox, original_image_size = rescale_image_add_grey_background_and_rescale_bbox(image_path, bbox, 640)
-
+      print(f"Bbox: {bbox}")
       image_patch = get_image_patch(image, bbox)
 
       temporary_save_path_image_patch = os.path.join(temporary_save_dir,f'image_patch_{image_name}.jpg')
@@ -89,7 +89,9 @@ for condition in conditions:
       W = image.size[0]
       H = image.size[1]
       normalized_bbox = normalize_box(convert_box(bbox), W, H)
+      print(f"Normalized bbox: {normalized_bbox}")
       x1, y1, x2, y2 = normalized_bbox
+
 
       with torch.inference_mode():
 

@@ -105,6 +105,14 @@ print(df_exploded.shape[0])
 print(df_exploded_correct.shape[0])
 print(df_exploded_wrong.shape[0])
 
+# compute accuracy per condition in percentage
+accuracy_per_condition = df_exploded.groupby(['Rel. Level', 'Noise Level', 'Noise Area']).agg(
+    total_samples=('soft_accuracy', 'count'),
+    correct_samples=('soft_accuracy', 'sum')
+)
+accuracy_per_condition['accuracy'] = (accuracy_per_condition['correct_samples'] / accuracy_per_condition['total_samples'] * 100).round(2)
+print(accuracy_per_condition)
+
 grouped_means_complete = df_exploded.groupby(['Rel. Level', 'Noise Level', 'Noise Area', 'layer','soft_accuracy'])['attn_ratio'].mean().reset_index()
 grouped_means = df_exploded.groupby(['Rel. Level', 'Noise Level', 'Noise Area', 'layer'])['attn_ratio'].mean().reset_index()
 grouped_means_correct = df_exploded_correct.groupby(['Rel. Level', 'Noise Level', 'Noise Area', 'layer'])['attn_ratio'].mean().reset_index()

@@ -87,10 +87,10 @@ df_exploded['soft_accuracy'] = (df_exploded['long_caption_text_similarity_score'
 df_exploded['output_clean'] = df_exploded['output_text'].str.replace(r'<\|im_end\|>', '', regex=True).str.replace(r'\.', '', regex=True).str.lower()
 df_exploded['target_clean'] = df_exploded['target'].str.replace(r' \([^)]*\)', '', regex=True).str.lower()
 
-from Levenshtein import ratio
-# Compute similarity ratio between long_output and long_target
-df_exploded['Levenshtein ratio'] = df_exploded.apply(lambda row: ratio(row['output_clean'].lower(), row['target_clean'].lower()), axis=1)
-df_exploded['hard_accuracy'] = df_exploded.apply(lambda row: ratio(row['output_clean'].lower(), row['target_clean'].lower()) >= 0.55, axis=1).astype(int)
+#from Levenshtein import ratio
+## Compute similarity ratio between long_output and long_target
+#df_exploded['Levenshtein ratio'] = df_exploded.apply(lambda row: ratio(row['output_clean'].lower(), row['target_clean'].lower()), axis=1)
+#df_exploded['hard_accuracy'] = df_exploded.apply(lambda row: ratio(row['output_clean'].lower(), row['target_clean'].lower()) >= 0.55, axis=1).astype(int)
 #%%
 # --- Filter for accuracy ---
 #df_exploded_correct = df_exploded[df_exploded['hard_accuracy'] == 1]
@@ -102,6 +102,14 @@ df_exploded_wrong = df_exploded[df_exploded['soft_accuracy'] == 0]
 print(df_exploded.shape[0])
 print(df_exploded_correct.shape[0])
 print(df_exploded_wrong.shape[0])
+
+# compute accuracy per condition in percentage
+accuracy_per_condition = df_exploded.groupby(['Rel. Level', 'Noise Level', 'Noise Area']).agg(
+    total_samples=('soft_accuracy', 'count'),
+    correct_samples=('soft_accuracy', 'sum')
+)
+accuracy_per_condition['accuracy'] = (accuracy_per_condition['correct_samples'] / accuracy_per_condition['total_samples'] * 100).round(2)
+print(accuracy_per_condition)
 
 grouped_means_complete = df_exploded.groupby(['Rel. Level', 'Noise Level', 'Noise Area', 'layer','soft_accuracy'])['attn_ratio'].mean().reset_index()
 grouped_means = df_exploded.groupby(['Rel. Level', 'Noise Level', 'Noise Area', 'layer'])['attn_ratio'].mean().reset_index()
@@ -127,6 +135,7 @@ merged_layers = grouped_layers.merge(
 
 # Rename columns explicitly to avoid naming issues
 merged_layers.rename(columns={'attn_ratio': 'attn_ratio_wrong'}, inplace=True)
+accuracy_per_condition
 #%%
 print(merged_layers.round(3).to_latex(index=False))
 #%%
@@ -190,7 +199,7 @@ import seaborn as sns
 
 # assume grouped_means is your DataFrame
 noise_levels = [0.0, 0.5, 1.0]
-conditions = ['all', 'context', 'target']
+conditions = ['All', 'Context', 'Target']
 n_rows, n_cols = len(noise_levels), len(conditions)
 
 fig, axes = plt.subplots(n_rows, n_cols, figsize=(5*n_cols, 4*n_rows), sharex=True, sharey=True)
@@ -200,8 +209,9 @@ for i, nl in enumerate(noise_levels):
     for j, cond in enumerate(conditions):
         ax = axes[i, j]
         df_nc = df_n[df_n['Noise Area'] == cond]
+        print(df_nc)
         pivot = df_nc.pivot(index='Rel. Level', columns='layer', values='attn_ratio')
-        
+        print(pivot)
         sns.heatmap(
             pivot,
             ax=ax,
@@ -223,6 +233,7 @@ for i, nl in enumerate(noise_levels):
 plt.tight_layout()
 plt.show()
 
+
 from matplotlib.colors import TwoSlopeNorm
 import matplotlib.gridspec as gridspec
 
@@ -231,10 +242,11 @@ all_vals = grouped_means['attn_ratio']
 vmin, vmax = [0, 1]
 vcenter = all_vals.mean()
 vcenter = grouped_means[grouped_means['Noise Level'] == 0.0]['attn_ratio'].mean()
-#vcenter = 0.18 # avg of 0 noise all 
+print(vcenter)
+vcenter = 0.15 # avg of 0 noise all 
 print(f"vmin: {vmin}, vcenter: {vcenter}, vmax: {vmax}")
 noise_levels = [0.0, 0.5, 1.0]
-conditions = ['all', 'context', 'target']
+conditions = ['All', 'Context', 'Target']
 n_rows, n_cols = len(noise_levels), len(conditions)
 
 fig, axes = plt.subplots(n_rows, n_cols, figsize=(5 * n_cols, 4 * n_rows), sharex=True, sharey=True)
@@ -261,9 +273,10 @@ for i, nl in enumerate(noise_levels):
         if j == n_cols - 1:
             cbar = ax.collections[0].colorbar
             raw_ticks = np.arange(vmin, vmax + 0.01, 0.2)
-            ticks = [round(t, 2) for t in raw_ticks if abs(t - vcenter) >= 0.05]
+            ticks = [round(t, 2) for t in raw_ticks if abs(t - vcenter) >= 0.1]
             ticks.append(round(vcenter, 2))
             ticks = sorted(set(ticks))
+            print(f"ticks: {ticks}")
             cbar.set_ticks(ticks)
             cbar.ax.set_yticklabels([
                 f"$\\bf{{{t:.2f}}}$" if np.isclose(t, vcenter) else f"{t:.2f}"
@@ -303,12 +316,12 @@ merged['abs_delta'] = merged['attn_ratio_delta'].abs()
 top_deltas = merged.sort_values(by='abs_delta', ascending=False).head(10)
 top_deltas
 #%%
-vmin, vmax = -0.25, 0.25  # adjust depending on your actual deltas
+vmin, vmax = -0.35, 0.35  # adjust depending on your actual deltas
 vcenter = 0.0  # because we're plotting difference
 print(f"vmin: {vmin}, vcenter: {vcenter}, vmax: {vmax}")
 
 noise_levels = [0.0, 0.5, 1.0]
-conditions = ['all', 'context', 'target']
+conditions = ['All', 'Context', 'Target']
 n_rows, n_cols = len(noise_levels), len(conditions)
 
 fig, axes = plt.subplots(n_rows, n_cols, figsize=(5 * n_cols, 4 * n_rows), sharex=True, sharey=True)
@@ -356,5 +369,4 @@ for i, nl in enumerate(noise_levels):
 
 plt.tight_layout()
 plt.show()
-
 
