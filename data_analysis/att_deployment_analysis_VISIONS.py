@@ -31,25 +31,6 @@ for col in df.columns:
     print(df[col].unique())
 
 #%%
-# Preprocess
-
-df['condition'] = df['condition'].str.replace('_noise', '', regex=True)
-df['output_clean'] = df['output_text'].str.replace(r'<\|im_end\|>', '', regex=True).str.replace(r'\.', '', regex=True).str.lower()
-
-df['Rel. Level'] = df['rel_level']
-df = df.drop(columns=['rel_level'])
-df['Rel. Level'] = df['Rel. Level'].apply(lambda x: x.replace('c', 'Congruent')).apply(lambda x: x.replace('i', 'Incongruent'))
-df['condition'] = df['condition'].str.replace('_noise', '', regex=True)
-df['Noise Area'] = df['condition'].apply(lambda x: x.split('_')[0]).apply(lambda x: x.replace('target', 'Target')).apply(lambda x: x.replace('context', 'Context')).apply(lambda x: x.replace('all', 'All')).apply(lambda x: x.replace('none', 'None'))
-df = df.drop(columns=['condition'])
-df['Noise Level'] = df['noise_level']
-df = df.drop(columns=['noise_level'])
-#%%
-for col in df.columns:
-    print(f"\nColumn: {col}")
-    print(df[col].unique())
-
-#%%
 # --- Ensure list-like columns are properly parsed from strings ---
 def parse_list(value):
     """Convert string representations of lists into actual lists."""
