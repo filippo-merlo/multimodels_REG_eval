@@ -23,12 +23,10 @@ plt.rcParams.update({
 separator = "\n\n##################################################\n##################################################\n\n"
 
 # --- Load the data ---
-dataset_path = '/home/fmerlo/data/sceneregstorage/attn_eval_output/results_att_deployment_VISIONS.csv'  # Update with your actual file path
+dataset_path = '/home/fmerlo/data/sceneregstorage/attn_eval_output/results_att_deployment_VISIONS_complete.csv'  # Update with your actual file path
 
 df = pd.read_csv(dataset_path)
-for col in df.columns:
-    print(f"\nColumn: {col}")
-    print(df[col].unique())
+df['Noise Area'] = df['Noise Area'].fillna('Target')
 
 #%%
 # --- Ensure list-like columns are properly parsed from strings ---
@@ -68,10 +66,6 @@ df_exploded['soft_accuracy'] = (df_exploded['long_caption_text_similarity_score'
 df_exploded['output_clean'] = df_exploded['output_text'].str.replace(r'<\|im_end\|>', '', regex=True).str.replace(r'\.', '', regex=True).str.lower()
 df_exploded['target_clean'] = df_exploded['target'].str.replace(r' \([^)]*\)', '', regex=True).str.lower()
 
-#from Levenshtein import ratio
-## Compute similarity ratio between long_output and long_target
-#df_exploded['Levenshtein ratio'] = df_exploded.apply(lambda row: ratio(row['output_clean'].lower(), row['target_clean'].lower()), axis=1)
-#df_exploded['hard_accuracy'] = df_exploded.apply(lambda row: ratio(row['output_clean'].lower(), row['target_clean'].lower()) >= 0.55, axis=1).astype(int)
 #%%
 # --- Filter for accuracy ---
 #df_exploded_correct = df_exploded[df_exploded['hard_accuracy'] == 1]
@@ -119,9 +113,12 @@ merged_layers.rename(columns={'attn_ratio': 'attn_ratio_wrong'}, inplace=True)
 accuracy_per_condition
 #%%
 print(merged_layers.round(3).to_latex(index=False))
+
+#%%
+grouped_means
 #%%
 # --- Compute mean attention ratio per layer grouped by condition ---
-grouped_means = grouped_means_wrong
+grouped_means = grouped_means
 y_lim = 1
 
 # --- Filter and plot results for a specific noise level ---
@@ -175,6 +172,7 @@ plt.legend()
 plt.grid()
 plt.show()
 
+#%%
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -188,6 +186,8 @@ fig, axes = plt.subplots(n_rows, n_cols, figsize=(5*n_cols, 4*n_rows), sharex=Tr
 for i, nl in enumerate(noise_levels):
     df_n = grouped_means[grouped_means['Noise Level'] == nl]
     for j, cond in enumerate(conditions):
+        if nl == 0.0:
+           cond = 'Target'
         ax = axes[i, j]
         df_nc = df_n[df_n['Noise Area'] == cond]
         print(df_nc)
@@ -214,6 +214,7 @@ for i, nl in enumerate(noise_levels):
 plt.tight_layout()
 plt.show()
 
+#%%
 
 from matplotlib.colors import TwoSlopeNorm
 import matplotlib.gridspec as gridspec
@@ -226,6 +227,10 @@ vcenter = grouped_means[grouped_means['Noise Level'] == 0.0]['attn_ratio'].mean(
 print(vcenter)
 vcenter = 0.15 # avg of 0 noise all 
 print(f"vmin: {vmin}, vcenter: {vcenter}, vmax: {vmax}")
+
+#%%
+grouped_means_complete
+#%%
 noise_levels = [0.0, 0.5, 1.0]
 conditions = ['All', 'Context', 'Target']
 n_rows, n_cols = len(noise_levels), len(conditions)
@@ -235,6 +240,8 @@ fig, axes = plt.subplots(n_rows, n_cols, figsize=(5 * n_cols, 4 * n_rows), share
 for i, nl in enumerate(noise_levels):
     df_n = grouped_means[grouped_means['Noise Level'] == nl]
     for j, cond in enumerate(conditions):
+        if nl == 0.0:
+            cond = 'Target'
         ax = axes[i, j]
         df_nc = df_n[df_n['Noise Area'] == cond]
         pivot = df_nc.pivot(index='Rel. Level', columns='layer', values='attn_ratio')
@@ -310,6 +317,8 @@ fig, axes = plt.subplots(n_rows, n_cols, figsize=(5 * n_cols, 4 * n_rows), share
 for i, nl in enumerate(noise_levels):
     df_n = merged[merged['Noise Level'] == nl]
     for j, cond in enumerate(conditions):
+        if nl == 0.0:
+          cond = 'Target'
         ax = axes[i, j]
         df_nc = df_n[df_n['Noise Area'] == cond]
         pivot = df_nc.pivot(index='Rel. Level', columns='layer', values='attn_ratio_delta')

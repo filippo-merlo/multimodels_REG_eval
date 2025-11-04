@@ -1,3 +1,4 @@
+#%%
 import os
 import ast
 import numpy as np
@@ -61,9 +62,7 @@ df['Noise Area'] = (
 )
 df = df.drop(columns=['Condition'])
 
-df.columns
-df
-#%% Import data for modal names and target descriptions
+# Import data for modal names and target descriptions
 modal_names_data_path = "/home/fmerlo/data/sceneregstorage/VISIONS_dataset/S3_name_agreement_critical_object.csv"
 norms_numerical_data_path = "/home/fmerlo/data/sceneregstorage/VISIONS_dataset/S5_norms_numerical.csv"
 
@@ -71,7 +70,26 @@ norms_numerical_data_path = "/home/fmerlo/data/sceneregstorage/VISIONS_dataset/S
 modal_names_df = pd.read_csv(modal_names_data_path)
 norms_numerical_df = pd.read_csv(norms_numerical_data_path)
 
-norms_numerical_df
+df_modal_names_norms = modal_names_df[['sceneID', 'targetID', 'consistency', 'modalname']]
+# Add one column from df2 to df1 by matching 'id'
+merged_df = df_modal_names_norms.merge(norms_numerical_df[['targetID', 'object.consistency']], on='targetID', how='left')
+
+
+df['targetID'] =  (
+    df['image_name']
+    .str.split('_')
+    .str[-1] + '_' +
+    df['image_name'].str.split('_').str[0] + '_' +
+    df['image_name'].str.split('_').str[1]
+).str.lower()
+# Merge into df; use left join to keep all rows of df
+df = df.merge(
+    merged_df[['targetID', 'modalname', 'object.consistency']],
+    on='targetID',
+    how='left'
+)
+df
+
 #%% Add output - target similarity scores
 from transformers import CLIPModel, CLIPProcessor
 import torch
@@ -105,12 +123,13 @@ def add_prefix(scene):
 
 def compute_cosine_similarity(row):
     text_embed_1 = compute_text_embedding(add_prefix(row.output_clean))
-    text_embed_2 = compute_text_embedding(add_prefix(row.target))
+    text_embed_2 = compute_text_embedding(add_prefix(row.modalname))
     return torch.nn.functional.cosine_similarity(text_embed_1, text_embed_2, dim=1).item()
 
 #%%
-df['long_caption_text_similarity_scores'] = [compute_cosine_similarity(row) for row in tqdm(df.itertuples(index=False), total=len(df))]
-
+df['output_modal_name_text_similarity_scores'] = [compute_cosine_similarity(row) for row in tqdm(df.itertuples(index=False), total=len(df))]
+#%%
+df
 #%%
 # Save the updated DataFrame to a new CSV file
 output_path = '/home/fmerlo/data/sceneregstorage/attn_eval_output/results_att_deployment_VISIONS_complete.csv'
