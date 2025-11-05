@@ -1,4 +1,7 @@
 #%%
+##################################################
+########### IMPORTS & INITIAL CONFIGURATION ###########
+##################################################
 import pandas as pd
 import ast
 import matplotlib.pyplot as plt
@@ -10,6 +13,7 @@ from pprint import pprint
 
 tqdm.pandas()
 
+# --- Matplotlib visual style setup ---
 plt.rcParams.update({
     'axes.titlesize': 18,
     'axes.labelsize': 16,
@@ -17,35 +21,43 @@ plt.rcParams.update({
     'ytick.labelsize': 14,
     'legend.title_fontsize': 14,
     'legend.fontsize': 12,
-    'font.size': 14  # base font size
+    'font.size': 14
 })
 
 separator = "\n\n##################################################\n##################################################\n\n"
 
-# --- Load the data ---
-dataset_path = '/home/fmerlo/data/sceneregstorage/attn_eval_output/results_att_deployment_VISIONS_complete.csv'  # Update with your actual file path
+
+#%%
+##################################################
+################### LOAD DATA ####################
+##################################################
+dataset_path = '/home/fmerlo/data/sceneregstorage/attn_eval_output/results_att_deployment_VISIONS_complete.csv'
 
 df = pd.read_csv(dataset_path)
 df['Noise Area'] = df['Noise Area'].fillna('Target')
 
+
 #%%
-# --- Ensure list-like columns are properly parsed from strings ---
+##################################################
+########### PARSE LIST-LIKE COLUMNS ##############
+##################################################
 def parse_list(value):
     """Convert string representations of lists into actual lists."""
     if isinstance(value, str):
         try:
-            return ast.literal_eval(value)  # Convert to list
+            return ast.literal_eval(value)
         except (SyntaxError, ValueError):
-            return []  # Return empty list if parsing fails
-    return value  # Return value if already a list
+            return []
+    return value
 
-# --- Compute attention ratio per layer ---
+
+##################################################
+########### COMPUTE ATTENTION RATIOS #############
+##################################################
 def compute_ratio(row):
-    """Compute the ratio of attention over target to attention over context per layer."""
+    """Compute ratio of attention over target to context per layer."""
     attn_over_target = np.array(row['attn_over_target'], dtype=np.float32)
     attn_over_context = np.array(row['attn_over_context'], dtype=np.float32)
-    
-    # Avoid division by zero by using np.divide with `where` condition
     ratio = np.divide(attn_over_target, attn_over_context, out=np.full_like(attn_over_target, np.nan), where=attn_over_context!=0)
     return ratio.tolist()
 
@@ -53,32 +65,261 @@ df['attn_over_target'] = df['attn_over_target'].apply(parse_list)
 df['attn_over_context'] = df['attn_over_context'].apply(parse_list)
 df['attn_ratio'] = df.progress_apply(compute_ratio, axis=1)
 
-# --- Expand data to have separate rows per layer ---
-df['layer'] = df['attn_ratio'].apply(lambda x: list(range(len(x))))  # Add index for each layer
-df_exploded = df.explode(['attn_ratio', 'layer'])  # Expand lists into rows
+#%%
+##################################################
+################# ACCURACY SETUP #################
+##################################################
+# --- Compute soft accuracy ---
+df['soft_accuracy'] = (df['long_caption_text_similarity_score'] >= 0.9).astype(int)
+df['soft_accuracy_modal_names'] = (df['output_modal_name_text_similarity_scores'] >= 0.9).astype(int)
+
+##################################################
+########### CORRELATION & DIVERGENCE #############
+##################################################
+
+# --- Compute Pearson correlation ---
+corr = df[['soft_accuracy', 'soft_accuracy_modal_names']].corr().iloc[0, 1]
+
+# --- Compute divergence cases ---
+divergent = df[df['soft_accuracy'] != df['soft_accuracy_modal_names']]
+n_divergent = len(divergent)
+divergence_rate = n_divergent / len(df)
+
+# --- Optional: show contingency table for deeper inspection ---
+contingency = pd.crosstab(df['soft_accuracy'], df['soft_accuracy_modal_names'],
+                          rownames=['soft_accuracy'], colnames=['soft_accuracy_modal_names'])
+# --- Pretty print results ---
+print("\n" + "="*60)
+print("ACCURACY CORRELATION AND DIVERGENCE ANALYSIS")
+print("="*60)
+print(f"Pearson correlation:       {corr:.3f}")
+print(f"Divergent cases:           {n_divergent} / {len(df)}  ({divergence_rate*100:.2f}%)")
+print("-"*60)
+print("Contingency table (counts):")
+print(contingency.to_string())
+print("-"*60)
+
+# --- Add normalized version for proportions ---
+contingency_norm = contingency.div(contingency.sum(axis=1), axis=0).round(3) * 100
+print("Contingency table (row %):")
+print(contingency_norm.to_string())
+print("="*60 + "\n")
+
+#%%
+##################################################
+##### LAYER-WISE ATTENTION VS CONSISTENCY ########
+##################################################
+
+# --- Subset: no-noise condition only ---
+df_no_noise = df[df['Noise Level'] == 0.0].copy()
+
+# --- Parse 'object.consistency' into numeric mean and std ---
+df_no_noise[['obj_consistency_mean', 'obj_consistency_std']] = (
+    df_no_noise['object.consistency']
+    .str.extract(r'([\d\.]+)\s*±\s*([\d\.]+)')
+    .astype(float)
+)
+
+# --- Expand lists to have one row per layer ---
+df_no_noise_expanded = df_no_noise.explode('attn_ratio')
+df_no_noise_expanded['layer'] = df_no_noise_expanded.groupby(level=0).cumcount()
+
+# --- Convert attention values to float ---
+df_no_noise_expanded['attn_ratio'] = pd.to_numeric(df_no_noise_expanded['attn_ratio'], errors='coerce')
+
+# --- Compute layer-wise statistics ---
+layer_stats = (
+    df_no_noise_expanded
+    .groupby('layer')
+    .agg(
+        mean_attn=('attn_ratio', 'mean'),
+        std_attn=('attn_ratio', 'std'),
+        corr_with_consistency=('attn_ratio', 
+            lambda x: x.corr(df_no_noise_expanded.loc[x.index, 'obj_consistency_mean']))
+    )
+    .reset_index()
+)
+
+# --- Rank layers by mean attention and stability ---
+layer_stats['cv_attn'] = layer_stats['std_attn'] / layer_stats['mean_attn']  # coefficient of variation
+layer_stats_sorted = layer_stats.sort_values(by='mean_attn', ascending=False)
+
+# --- Print summary ---
+print("\n" + "="*60)
+print("LAYER-WISE ATTENTION VS OBJECT CONSISTENCY (NO NOISE)")
+print("="*60)
+print(layer_stats_sorted.round(3))
+print("="*60 + "\n")
+
+# --- Plot: mean and variability across layers ---
+fig, ax1 = plt.subplots(figsize=(8, 5))
+
+ax1.plot(layer_stats['layer'], layer_stats['mean_attn'], marker='o', label='Mean attention')
+ax1.fill_between(
+    layer_stats['layer'],
+    layer_stats['mean_attn'] - layer_stats['std_attn'],
+    layer_stats['mean_attn'] + layer_stats['std_attn'],
+    alpha=0.2, label='±1 std'
+)
+ax1.set_xlabel('Layer')
+ax1.set_ylabel('Mean Attention Ratio')
+ax1.set_title('Layer-wise Mean Attention Ratio (Noise = 0)')
+ax1.grid(True)
+ax1.legend()
+
+plt.tight_layout()
+plt.show()
+
+# --- Plot correlation with consistency per layer ---
+plt.figure(figsize=(8, 5))
+plt.bar(layer_stats['layer'], layer_stats['corr_with_consistency'], color='gray')
+plt.axhline(0, color='red', linestyle='--')
+plt.xlabel('Layer')
+plt.ylabel('Correlation with Object Consistency')
+plt.title('Layer-wise Correlation Between Attention and Consistency')
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+##################################################
+###### NON-LINEAR (U-SHAPE) / QUADRATIC ANALYSIS ##
+###### WITH NORMALIZED CONSISTENCY SCORE ##########
+##################################################
+
+# --- Subset: no-noise condition only ---
+df_no_noise = df[df['Noise Level'] == 0.0].copy()
+
+# --- Filter and keep only correct samples ---
+df_no_noise = df_no_noise[df_no_noise['soft_accuracy'] == 1].copy()
+
+# --- Compute mean attention ratios (mid-level layers) ---
+df_no_noise['mean_attn_ratio'] = df_no_noise['attn_ratio'].apply(
+    lambda x: np.mean(x[13:17]) if isinstance(x, (list, np.ndarray)) and len(x) > 16 else np.nan
+)
+
+# --- Parse 'object.consistency' field (extract mean and std) ---
+df_no_noise[['obj_consistency_mean', 'obj_consistency_std']] = (
+    df_no_noise['object.consistency']
+    .str.extract(r'([\d\.]+)\s*±\s*([\d\.]+)')
+    .astype(float)
+)
+
+# --- Check parsing ---
+print("Parsed object consistency columns:\n",
+      df_no_noise[['object.consistency', 'obj_consistency_mean', 'obj_consistency_std']].head())
+
+# --- Drop NaNs for safe fitting ---
+valid_mask = df_no_noise['obj_consistency_mean'].notna() & df_no_noise['mean_attn_ratio'].notna()
+x_raw = df_no_noise.loc[valid_mask, 'obj_consistency_mean'].values
+y = df_no_noise.loc[valid_mask, 'mean_attn_ratio'].values
+
+# --- Normalize object consistency to [0, 1] ---
+x_min, x_max = x_raw.min(), x_raw.max()
+x = (x_raw - x_min) / (x_max - x_min)
+
+##################################################
+# === FIT LINEAR AND QUADRATIC MODELS ===========
+##################################################
+
+# --- Linear fit: y = m·x + c ---
+lin_coeffs = np.polyfit(x, y, 1)
+lin_poly = np.poly1d(lin_coeffs)
+y_pred_lin = lin_poly(x)
+
+# --- Quadratic fit: y = a·x² + b·x + c ---
+quad_coeffs = np.polyfit(x, y, 2)
+quad_poly = np.poly1d(quad_coeffs)
+y_pred_quad = quad_poly(x)
+
+# --- Compute R² values ---
+def r2_score(y_true, y_pred):
+    ss_res = np.sum((y_true - y_pred) ** 2)
+    ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
+    return 1 - ss_res / ss_tot
+
+r2_lin = r2_score(y, y_pred_lin)
+r2_quad = r2_score(y, y_pred_quad)
+
+# --- Print model summaries ---
+print("\n" + "="*60)
+print("LINEAR AND QUADRATIC FITS (Normalized Object Consistency)")
+print("="*60)
+print(f"Linear:    y = {lin_coeffs[0]:.4f}·x + {lin_coeffs[1]:.4f}")
+print(f"Quadratic: y = {quad_coeffs[0]:.4f}·x² + {quad_coeffs[1]:.4f}·x + {quad_coeffs[2]:.4f}")
+print("-"*60)
+print(f"R² (linear):    {r2_lin:.3f}")
+print(f"R² (quadratic): {r2_quad:.3f}")
+print("  Normalization ensures scale-independent comparison.")
+print("  A U-shaped trend should yield a higher R² and large |a| in the quadratic term.")
+print("="*60 + "\n")
+
+##################################################
+######### COMBINED LINEAR + QUADRATIC PLOT ########
+##################################################
+
+# --- Prepare smooth grid for curves ---
+x_grid = np.linspace(0, 1, 200)
+y_grid_lin = lin_poly(x_grid)
+y_grid_quad = quad_poly(x_grid)
+
+plt.figure(figsize=(8, 6))
+
+# --- Scatter: observed data ---
+sns.scatterplot(
+    x=x, y=y,
+    alpha=0.45, s=60,
+    edgecolor='white', linewidth=0.6,
+    color='royalblue',
+    label='Samples'
+)
+
+# --- Linear fit ---
+plt.plot(
+    x_grid, y_grid_lin,
+    color='steelblue', linestyle='--', linewidth=2,
+    label=f'Linear fit ($R^2={r2_lin:.3f}$)'
+)
+
+# --- Quadratic fit ---
+plt.plot(
+    x_grid, y_grid_quad,
+    color='crimson', linewidth=3,
+    label=f'Quadratic fit ($R^2={r2_quad:.3f}$)'
+)
+
+# --- Styling ---
+plt.title(
+    "Attention Ratio vs. Normalized Object Consistency\n(Linear vs Quadratic Models)",
+    fontsize=16, pad=15
+)
+plt.xlabel("Normalized Object Consistency", fontsize=14)
+plt.ylabel("Mean Attention Ratio", fontsize=14)
+plt.grid(True, linestyle='--', alpha=0.4)
+plt.legend(frameon=True, loc='best')
+sns.despine()
+plt.tight_layout()
+plt.show()
+
+
+#%%
+##################################################
+########### SPLIT: CORRECT vs WRONG ##############
+##################################################
+
+# --- Expand per-layer data ---
+df['layer'] = df['attn_ratio'].apply(lambda x: list(range(len(x))))
+df_exploded = df.explode(['attn_ratio', 'layer'])
 df_exploded['attn_ratio'] = df_exploded['attn_ratio'].apply(pd.to_numeric, errors='coerce')
 
-#%%
-# compute soft accuracy
-df_exploded['soft_accuracy'] = (df_exploded['long_caption_text_similarity_score'] >= 0.9).astype(int) #!!!
 
-# clean output and compute hard accuracy 
-df_exploded['output_clean'] = df_exploded['output_text'].str.replace(r'<\|im_end\|>', '', regex=True).str.replace(r'\.', '', regex=True).str.lower()
-df_exploded['target_clean'] = df_exploded['target'].str.replace(r' \([^)]*\)', '', regex=True).str.lower()
-
-#%%
-# --- Filter for accuracy ---
-#df_exploded_correct = df_exploded[df_exploded['hard_accuracy'] == 1]
-#df_exploded_wrong = df_exploded[df_exploded['hard_accuracy'] == 0]
 df_exploded_correct = df_exploded[df_exploded['soft_accuracy'] == 1]
 df_exploded_wrong = df_exploded[df_exploded['soft_accuracy'] == 0]
-
 
 print(df_exploded.shape[0])
 print(df_exploded_correct.shape[0])
 print(df_exploded_wrong.shape[0])
 
-# compute accuracy per condition in percentage
+# --- Compute accuracy per condition ---
 accuracy_per_condition = df_exploded.groupby(['Rel. Level', 'Noise Level', 'Noise Area']).agg(
     total_samples=('soft_accuracy', 'count'),
     correct_samples=('soft_accuracy', 'sum')
@@ -86,6 +327,10 @@ accuracy_per_condition = df_exploded.groupby(['Rel. Level', 'Noise Level', 'Nois
 accuracy_per_condition['accuracy'] = (accuracy_per_condition['correct_samples'] / accuracy_per_condition['total_samples'] * 100).round(2)
 print(accuracy_per_condition)
 
+
+##################################################
+########### GROUPING & MERGING STATS #############
+##################################################
 grouped_means_complete = df_exploded.groupby(['Rel. Level', 'Noise Level', 'Noise Area', 'layer','soft_accuracy'])['attn_ratio'].mean().reset_index()
 grouped_means = df_exploded.groupby(['Rel. Level', 'Noise Level', 'Noise Area', 'layer'])['attn_ratio'].mean().reset_index()
 grouped_means_correct = df_exploded_correct.groupby(['Rel. Level', 'Noise Level', 'Noise Area', 'layer'])['attn_ratio'].mean().reset_index()
@@ -95,268 +340,175 @@ grouped_layers = df_exploded.groupby(['Rel. Level', 'Noise Level', 'Noise Area']
 grouped_layers_correct = df_exploded_correct.groupby(['Rel. Level', 'Noise Level', 'Noise Area'])['attn_ratio'].mean().reset_index()
 grouped_layers_wrong = df_exploded_wrong.groupby(['Rel. Level', 'Noise Level', 'Noise Area'])['attn_ratio'].mean().reset_index()
 
-# Merge the datasets
 merged_layers = grouped_layers.merge(
     grouped_layers_correct, 
     on=['Noise Level', 'Rel. Level', 'Noise Area'], 
     suffixes=('_all', '_correct'),
-    how='outer'  # Ensures all data is included
+    how='outer'
 ).merge(
     grouped_layers_wrong, 
     on=['Noise Level', 'Rel. Level', 'Noise Area'], 
     suffixes=('_correct', '_wrong'),
     how='outer'
 )
-
-# Rename columns explicitly to avoid naming issues
 merged_layers.rename(columns={'attn_ratio': 'attn_ratio_wrong'}, inplace=True)
 accuracy_per_condition
+
+
 #%%
+##################################################
+################## LATEX TABLE ###################
+##################################################
 print(merged_layers.round(3).to_latex(index=False))
 
+
 #%%
-grouped_means
-#%%
-# --- Compute mean attention ratio per layer grouped by condition ---
-grouped_means = grouped_means
+##################################################
+############### LINE PLOT SECTION ################
+##################################################
+grouped_means = grouped_means_correct
 y_lim = 1
 
-# --- Filter and plot results for a specific noise level ---
-noise_level_filter = 0.0  # Set noise level for filtering
+# --- Noise = 0.0 ---
+noise_level_filter = 0.0
 filtered_data = grouped_means[grouped_means['Noise Level'] == noise_level_filter]
 
 plt.figure(figsize=(8, 6))
 for (condition, rel_level), sub_df in filtered_data.groupby(['Noise Area', 'Rel. Level']):
     if condition != 'Target':
         continue
-    sub_df = sub_df.sort_values(by='layer')
-    plt.plot(sub_df['layer'], sub_df['attn_ratio'], marker='o', linestyle='-', label=f'Rel: {rel_level}')
-
-plt.xlabel('Layer')
-plt.ylabel('Mean Attention Ratio')
+    plt.plot(sub_df.sort_values('layer')['layer'], sub_df['attn_ratio'], marker='o', label=f'Rel: {rel_level}')
+plt.xlabel('Layer'); plt.ylabel('Mean Attention Ratio')
 plt.ylim(0, y_lim)
 plt.title(f'Mean Attention Ratio per Layer (Noise = {noise_level_filter})')
-plt.legend()
-plt.grid()
-plt.show()
+plt.legend(); plt.grid(); plt.show()
 
-noise_level_filter = 0.5  # Set noise level for filtering
+# --- Noise = 0.5 ---
+noise_level_filter = 0.5
 filtered_data = grouped_means[grouped_means['Noise Level'] == noise_level_filter]
-
 plt.figure(figsize=(8, 6))
 for (condition, rel_level), sub_df in filtered_data.groupby(['Noise Area', 'Rel. Level']):
-    sub_df = sub_df.sort_values(by='layer')
-    plt.plot(sub_df['layer'], sub_df['attn_ratio'], marker='o', linestyle='-', label=f'Area: {condition}, Rel: {rel_level}')
-
-plt.xlabel('Layer')
-plt.ylabel('Mean Attention Ratio')
+    plt.plot(sub_df.sort_values('layer')['layer'], sub_df['attn_ratio'], marker='o', label=f'Area: {condition}, Rel: {rel_level}')
+plt.xlabel('Layer'); plt.ylabel('Mean Attention Ratio')
 plt.ylim(0, y_lim)
 plt.title(f'Mean Attention Ratio per Layer (Noise = {noise_level_filter})')
-plt.legend()
-plt.grid()
-plt.show()
+plt.legend(); plt.grid(); plt.show()
 
-noise_level_filter = 1.0  # Set noise level for filtering
+# --- Noise = 1.0 ---
+noise_level_filter = 1.0
 filtered_data = grouped_means[grouped_means['Noise Level'] == noise_level_filter]
-
 plt.figure(figsize=(8, 6))
 for (condition, rel_level), sub_df in filtered_data.groupby(['Noise Area', 'Rel. Level']):
-    sub_df = sub_df.sort_values(by='layer')
-    plt.plot(sub_df['layer'], sub_df['attn_ratio'], marker='o', linestyle='-', label=f'Area: {condition}, Rel: {rel_level}')
-
-plt.xlabel('Layer')
-plt.ylabel('Mean Attention Ratio')
+    plt.plot(sub_df.sort_values('layer')['layer'], sub_df['attn_ratio'], marker='o', label=f'Area: {condition}, Rel: {rel_level}')
+plt.xlabel('Layer'); plt.ylabel('Mean Attention Ratio')
 plt.ylim(0, y_lim)
 plt.title(f'Mean Attention Ratio per Layer (Noise = {noise_level_filter})')
-plt.legend()
-plt.grid()
-plt.show()
+plt.legend(); plt.grid(); plt.show()
+
 
 #%%
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-# assume grouped_means is your DataFrame
+##################################################
+################# HEATMAP SECTION ################
+##################################################
 noise_levels = [0.0, 0.5, 1.0]
 conditions = ['All', 'Context', 'Target']
 n_rows, n_cols = len(noise_levels), len(conditions)
 
 fig, axes = plt.subplots(n_rows, n_cols, figsize=(5*n_cols, 4*n_rows), sharex=True, sharey=True)
-
 for i, nl in enumerate(noise_levels):
     df_n = grouped_means[grouped_means['Noise Level'] == nl]
     for j, cond in enumerate(conditions):
-        if nl == 0.0:
-           cond = 'Target'
         ax = axes[i, j]
         df_nc = df_n[df_n['Noise Area'] == cond]
-        print(df_nc)
+        if nl == 0.0:
+            df_nc = df_n[df_n['Noise Area'] == 'Target']
         pivot = df_nc.pivot(index='Rel. Level', columns='layer', values='attn_ratio')
-        print(pivot)
-        sns.heatmap(
-            pivot,
-            ax=ax,
-            annot=False,
-            fmt=".2f",
-            vmin=0, vmax=1,
-            linewidths=0.5,
-            linecolor='gray',
-            cbar=(j == n_cols - 1)
-        )
-        if i == 0:
-            ax.set_title(cond.capitalize())
-        if j == 0:
-            ax.set_ylabel(f'Noise={nl}\nRelevance')
-        else:
-            ax.set_ylabel('')
+        sns.heatmap(pivot, ax=ax, annot=False, fmt=".2f", vmin=0, vmax=1,
+                    linewidths=0.5, linecolor='gray', cbar=(j == n_cols - 1))
+        if i == 0: ax.set_title(cond.capitalize())
+        if j == 0: ax.set_ylabel(f'Noise={nl}\nRelevance')
         ax.set_xlabel('Layer')
+plt.tight_layout(); plt.show()
 
-plt.tight_layout()
-plt.show()
 
 #%%
-
+##################################################
+######## DIVERGING HEATMAP WITH CENTERING ########
+##################################################
 from matplotlib.colors import TwoSlopeNorm
 import matplotlib.gridspec as gridspec
 
-# precompute global stats to center the diverging map
 all_vals = grouped_means['attn_ratio']
 vmin, vmax = [0, 1]
-vcenter = all_vals.mean()
 vcenter = grouped_means[grouped_means['Noise Level'] == 0.0]['attn_ratio'].mean()
-print(vcenter)
-vcenter = 0.15 # avg of 0 noise all 
+vcenter = 0.15
 print(f"vmin: {vmin}, vcenter: {vcenter}, vmax: {vmax}")
 
+
 #%%
-grouped_means_complete
-#%%
+##################################################
+######## FINAL HEATMAP GRID (COLOR NORMALIZED) ###
+##################################################
 noise_levels = [0.0, 0.5, 1.0]
 conditions = ['All', 'Context', 'Target']
 n_rows, n_cols = len(noise_levels), len(conditions)
 
-fig, axes = plt.subplots(n_rows, n_cols, figsize=(5 * n_cols, 4 * n_rows), sharex=True, sharey=True)
-
+fig, axes = plt.subplots(n_rows, n_cols, figsize=(5*n_cols, 4*n_rows), sharex=True, sharey=True)
 for i, nl in enumerate(noise_levels):
     df_n = grouped_means[grouped_means['Noise Level'] == nl]
     for j, cond in enumerate(conditions):
-        if nl == 0.0:
-            cond = 'Target'
         ax = axes[i, j]
         df_nc = df_n[df_n['Noise Area'] == cond]
+        if nl == 0.0: df_nc = df_n[df_n['Noise Area'] == 'Target']
         pivot = df_nc.pivot(index='Rel. Level', columns='layer', values='attn_ratio')
-
         norm = TwoSlopeNorm(vmin=vmin, vcenter=vcenter, vmax=vmax)
-
-        sns.heatmap(
-            pivot,
-            ax=ax,
-            annot=False,
-            cmap="RdBu_r",
-            norm=norm,
-            linewidths=0.5,
-            linecolor='gray',
-            cbar=(j == n_cols - 1)
-        )
-        if j == n_cols - 1:
-            cbar = ax.collections[0].colorbar
-            raw_ticks = np.arange(vmin, vmax + 0.01, 0.2)
-            ticks = [round(t, 2) for t in raw_ticks if abs(t - vcenter) >= 0.1]
-            ticks.append(round(vcenter, 2))
-            ticks = sorted(set(ticks))
-            print(f"ticks: {ticks}")
-            cbar.set_ticks(ticks)
-            cbar.ax.set_yticklabels([
-                f"$\\bf{{{t:.2f}}}$" if np.isclose(t, vcenter) else f"{t:.2f}"
-                for t in ticks
-            ])
-
-
-        if i == 0:
-            ax.set_title(cond.capitalize(), fontsize=20)
-        if j == 0:
-            ax.set_ylabel(f'Noise={nl}\nRelevance', fontsize=16)
-        else:
-            ax.set_ylabel('')
-        ax.tick_params(axis='x', rotation=0)
+        sns.heatmap(pivot, ax=ax, cmap="RdBu_r", norm=norm,
+                    linewidths=0.5, linecolor='gray', cbar=(j == n_cols - 1))
+        if i == 0: ax.set_title(cond.capitalize(), fontsize=20)
+        if j == 0: ax.set_ylabel(f'Noise={nl}\nRelevance', fontsize=16)
         ax.set_xlabel('Layer', fontsize=16)
         ax.tick_params(labelsize=14)
-
-plt.subplots_adjust(right=0.90)
-plt.tight_layout()
-plt.show()
+plt.tight_layout(); plt.show()
 
 
 #%%
-from matplotlib.colors import TwoSlopeNorm
-# ====== DELTAS ========
-# Merge on all relevant grouping keys
+##################################################
+################ DELTA COMPUTATION ################
+##################################################
 merged = pd.merge(
-    grouped_means_correct,
-    grouped_means_wrong,
+    grouped_means_correct, grouped_means_wrong,
     on=['Rel. Level', 'Noise Level', 'Noise Area', 'layer'],
     suffixes=('_correct', '_wrong')
 )
-
-# Compute the delta
 merged['attn_ratio_delta'] = merged['attn_ratio_correct'] - merged['attn_ratio_wrong']
 merged['abs_delta'] = merged['attn_ratio_delta'].abs()
 top_deltas = merged.sort_values(by='abs_delta', ascending=False).head(10)
 top_deltas
+
+
 #%%
-vmin, vmax = -0.35, 0.35  # adjust depending on your actual deltas
-vcenter = 0.0  # because we're plotting difference
+##################################################
+############## DELTA HEATMAP PLOT ################
+##################################################
+vmin, vmax, vcenter = -0.35, 0.35, 0.0
 print(f"vmin: {vmin}, vcenter: {vcenter}, vmax: {vmax}")
 
 noise_levels = [0.0, 0.5, 1.0]
 conditions = ['All', 'Context', 'Target']
 n_rows, n_cols = len(noise_levels), len(conditions)
 
-fig, axes = plt.subplots(n_rows, n_cols, figsize=(5 * n_cols, 4 * n_rows), sharex=True, sharey=True)
-
+fig, axes = plt.subplots(n_rows, n_cols, figsize=(5*n_cols, 4*n_rows), sharex=True, sharey=True)
 for i, nl in enumerate(noise_levels):
     df_n = merged[merged['Noise Level'] == nl]
     for j, cond in enumerate(conditions):
-        if nl == 0.0:
-          cond = 'Target'
         ax = axes[i, j]
         df_nc = df_n[df_n['Noise Area'] == cond]
+        if nl == 0.0: df_nc = df_n[df_n['Noise Area'] == 'Target']
         pivot = df_nc.pivot(index='Rel. Level', columns='layer', values='attn_ratio_delta')
-
         norm = TwoSlopeNorm(vmin=vmin, vcenter=vcenter, vmax=vmax)
-
-        sns.heatmap(
-            pivot,
-            ax=ax,
-            annot=False,
-            cmap="PiYG",
-            norm=norm,
-            linewidths=0.5,
-            linecolor='gray',
-            cbar=(j == n_cols - 1)
-        )
-        if j == n_cols - 1:
-            cbar = ax.collections[0].colorbar
-            raw_ticks = np.linspace(vmin, vmax, 11)
-            ticks = [round(t, 2) for t in raw_ticks if abs(t - vcenter) >= 0.05]
-            ticks.append(round(vcenter, 2))
-            ticks = sorted(set(ticks))
-            cbar.set_ticks(ticks)
-            cbar.ax.set_yticklabels([
-                f"$\\bf{{{t:.2f}}}$" if np.isclose(t, vcenter) else f"{t:.2f}"
-                for t in ticks
-            ])
-
-        if i == 0:
-            ax.set_title(cond.capitalize(), fontsize=20)
-        if j == 0:
-            ax.set_ylabel(f'Noise={nl}\nRelevance', fontsize=16)
-        else:
-            ax.set_ylabel('')
-        ax.tick_params(axis='x', rotation=0)
+        sns.heatmap(pivot, ax=ax, cmap="PiYG", norm=norm,
+                    linewidths=0.5, linecolor='gray', cbar=(j == n_cols - 1))
+        if i == 0: ax.set_title(cond.capitalize(), fontsize=20)
+        if j == 0: ax.set_ylabel(f'Noise={nl}\nRelevance', fontsize=16)
         ax.set_xlabel('Layer', fontsize=16)
-        ax.tick_params(labelsize=14)
-
-plt.tight_layout()
-plt.show()
-
+plt.tight_layout(); plt.show()
