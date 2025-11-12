@@ -65,6 +65,7 @@ df['attn_over_target'] = df['attn_over_target'].apply(parse_list)
 df['attn_over_context'] = df['attn_over_context'].apply(parse_list)
 df['attn_ratio'] = df.progress_apply(compute_ratio, axis=1)
 
+
 #%%
 ##################################################
 ################# ACCURACY SETUP #################
@@ -204,14 +205,44 @@ df_no_noise[['obj_consistency_mean', 'obj_consistency_std']] = (
     .astype(float)
 )
 
+import matplotlib.pyplot as plt
+
+# --- Compute IQR bounds (mild trimming) ---
+Q1 = df_no_noise['mean_attn_ratio'].quantile(0.25)
+Q3 = df_no_noise['mean_attn_ratio'].quantile(0.75)
+IQR = Q3 - Q1
+lower = Q1 - 3 * IQR
+upper = Q3 + 3 * IQR
+
+# --- Count and remove outliers ---
+n_before = len(df_no_noise)
+df_no_noise = df_no_noise[
+    (df_no_noise['mean_attn_ratio'] >= lower) &
+    (df_no_noise['mean_attn_ratio'] <= upper)
+].copy()
+n_after = len(df_no_noise)
+n_removed = n_before - n_after
+
+# --- Plot histogram ---
+plt.figure(figsize=(6,4))
+plt.hist(df_no_noise['mean_attn_ratio'], bins=40, color='steelblue', edgecolor='black', alpha=0.7)
+plt.xlabel("Mean Attention Ratio")
+plt.ylabel("Frequency")
+plt.title("Distribution after Outlier Removal")
+plt.show()
+
+print(f"Removed {n_removed} outliers out of {n_before} samples ({n_removed / n_before:.2%}).")
+
 # --- Check parsing ---
 print("Parsed object consistency columns:\n",
       df_no_noise[['object.consistency', 'obj_consistency_mean', 'obj_consistency_std']].head())
+
 
 # --- Drop NaNs for safe fitting ---
 valid_mask = df_no_noise['obj_consistency_mean'].notna() & df_no_noise['mean_attn_ratio'].notna()
 x_raw = df_no_noise.loc[valid_mask, 'obj_consistency_mean'].values
 y = df_no_noise.loc[valid_mask, 'mean_attn_ratio'].values
+print(y.max())
 
 # --- Normalize object consistency to [0, 1] ---
 x_min, x_max = x_raw.min(), x_raw.max()

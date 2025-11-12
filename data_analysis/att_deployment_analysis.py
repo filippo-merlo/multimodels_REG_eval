@@ -37,6 +37,37 @@ file_path = '/home/fmerlo/data/sceneregstorage/attn_eval_output/results_att_depl
 
 # --- Load CSV into pandas DataFrame ---
 df = pd.read_csv(file_path)
+#%%
+#df['rel_score'][df['rel_level'] == 'original']
+#df['rel_score'][df['rel_level'] == 'same_target']
+#
+#for _, row in df.iterrows():
+#    name = row['image_name']
+#    if 'original' in name:
+#        rel_name = name.replace('original', 'relscore_same_target')
+#        orig_score = row['rel_score']
+#        if rel_name in df['image_name'].values:
+#            rel_score = df.loc[df['image_name'] == rel_name, 'rel_score'].values[0]
+#            if pd.isna(rel_score):
+#                # Fill missing value
+#                df.loc[df['image_name'] == rel_name, 'rel_score'] = orig_score
+#            elif rel_score != orig_score:
+#                print(f"⚠️ Mismatch for {rel_name}: original={orig_score}, current={rel_score}")
+##%%
+## 1. Build mapping from original -> relscore_same_target
+#orig_to_rel = {
+#    row['image_name'].replace('original', 'relscore_same_target'): row['rel_score']
+#    for _, row in df.iterrows()
+#    if 'original' in row['image_name']
+#}
+#
+## 2. Update relscore_same_target rows with corresponding values
+#df.loc[
+#    df['image_name'].isin(orig_to_rel.keys()), 'rel_score'
+#] = df['image_name'].map(orig_to_rel)
+#
+
+#%%
 
 # --- Basic cleaning and normalization ---
 df = df[df['target'] != "nothing"]  # Remove rows with meaningless targets
@@ -86,17 +117,10 @@ def parse_list(value):
 
 
 def compute_ratio(row):
-    """Compute ratio: attention over target / attention over context."""
+    """Compute ratio of attention over target to context per layer."""
     attn_over_target = np.array(row['attn_over_target'], dtype=np.float32)
     attn_over_context = np.array(row['attn_over_context'], dtype=np.float32)
-
-    # Avoid division by zero
-    ratio = np.divide(
-        attn_over_target,
-        attn_over_context,
-        out=np.full_like(attn_over_target, np.nan),
-        where=attn_over_context != 0
-    )
+    ratio = np.divide(attn_over_target, attn_over_context, out=np.full_like(attn_over_target, np.nan), where=attn_over_context!=0)
     return ratio.tolist()
 
 
@@ -105,6 +129,7 @@ df['attn_over_target'] = df['attn_over_target'].apply(parse_list)
 df['attn_over_context'] = df['attn_over_context'].apply(parse_list)
 df['attn_ratio'] = df.progress_apply(compute_ratio, axis=1)
 
+#%%
 # --- Soft accuracy (based on cosine similarity threshold) ---
 df['soft_accuracy'] = (df['long_caption_text_similarity_scores'] >= 0.90).astype(int)
 
@@ -113,9 +138,15 @@ df['soft_accuracy'] = (df['long_caption_text_similarity_scores'] >= 0.90).astype
 ###### LINEAR AND QUADRATIC MODEL FITS ###########
 ###### (WITH NORMALIZED RELEVANCE SCORE) #########
 ##################################################
+from scipy import stats
+import numpy as np
 
 # --- Subset: retain only no-noise condition ---
 df_no_noise = df[df['Noise Level'] == 0.0].copy()
+df_no_noise = df_no_noise[
+    (df_no_noise['Rel. Level'] != 'original') 
+].copy()
+
 
 # --- Keep only correctly predicted samples ---
 df_no_noise = df_no_noise[df_no_noise['soft_accuracy'] == 1].copy()
@@ -123,7 +154,36 @@ df_no_noise = df_no_noise[df_no_noise['soft_accuracy'] == 1].copy()
 # --- Compute mean attention ratio (mid-level layers: 13–16) ---
 df_no_noise['mean_attn_ratio'] = df_no_noise['attn_ratio'].apply(
     lambda x: np.mean(x[13:17]) if isinstance(x, (list, np.ndarray)) and len(x) > 16 else np.nan
+    #lambda x: np.mean(x) if isinstance(x, (list, np.ndarray)) and len(x) > 16 else np.nan
 )
+
+import matplotlib.pyplot as plt
+
+# --- Compute IQR bounds (mild trimming) ---
+Q1 = df_no_noise['mean_attn_ratio'].quantile(0.25)
+Q3 = df_no_noise['mean_attn_ratio'].quantile(0.75)
+IQR = Q3 - Q1
+lower = Q1 - 3 * IQR
+upper = Q3 + 3 * IQR
+
+# --- Count and remove outliers ---
+n_before = len(df_no_noise)
+df_no_noise = df_no_noise[
+    (df_no_noise['mean_attn_ratio'] >= lower) &
+    (df_no_noise['mean_attn_ratio'] <= upper)
+].copy()
+n_after = len(df_no_noise)
+n_removed = n_before - n_after
+
+# --- Plot histogram ---
+plt.figure(figsize=(6,4))
+plt.hist(df_no_noise['mean_attn_ratio'], bins=40, color='steelblue', edgecolor='black', alpha=0.7)
+plt.xlabel("Mean Attention Ratio")
+plt.ylabel("Frequency")
+plt.title("Distribution after Outlier Removal")
+plt.show()
+
+print(f"Removed {n_removed} outliers out of {n_before} samples ({n_removed / n_before:.2%}).")
 
 # --- Remove missing values for reliable model fitting ---
 valid_mask = df_no_noise['rel_score'].notna() & df_no_noise['mean_attn_ratio'].notna()
@@ -228,7 +288,6 @@ plt.show()
 df['layer'] = df['attn_ratio'].apply(lambda x: list(range(len(x))))
 df_exploded = df.explode(['attn_ratio', 'layer'])
 df_exploded['attn_ratio'] = df_exploded['attn_ratio'].apply(pd.to_numeric, errors='coerce')
-
 
 # --- Soft accuracy (based on cosine similarity threshold) ---
 df_exploded['soft_accuracy'] = (df_exploded['long_caption_text_similarity_scores'] >= 0.9).astype(int)
