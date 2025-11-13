@@ -319,6 +319,13 @@ scores = ['long_caption_scores']
 #plt.show()
 #
 
+
+rng = np.random.default_rng(101)  # fixed seed for reproducibility
+jitter_step = 0.08
+similarity_threshold = 0.01
+markersize = 6
+linewidth=1.5
+
 # Prepare radar data: include Noise Level
 radar_data = (
     semantic_by_combined
@@ -330,25 +337,62 @@ radar_data = (
 
 categories = semantic_by_combined['Rel. Level'].unique().tolist()
 num_vars = len(categories)
-angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
-angles += angles[:1]  # close the loop
+num_vars = len(categories)
+base_angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False)
 
-# Create the figure
+# --- PRECOMPUTE VALUE-BASED JITTER OFFSETS (per series x angle) ---
+
+# matrix of shape (n_series, n_angles) with the radial values
+values_matrix = radar_data[categories].to_numpy()
+n_series = values_matrix.shape[0]
+
+# initialize jitter offsets to zero
+jitter_offsets = np.zeros_like(values_matrix)
+
+for j in range(num_vars):
+    col = values_matrix[:, j]           # values for angle j across all series
+    order = np.argsort(col)            # sort by value
+    sorted_vals = col[order]
+    
+    # pairwise differences
+    if len(sorted_vals) > 1:
+        diffs = np.diff(sorted_vals)
+        min_diff = np.min(diffs)
+    else:
+        min_diff = np.inf
+    
+    # jitter only if some values are "too close"
+    if min_diff < similarity_threshold:
+        # assign symmetric offsets around 0: ..., -2s, -s, 0, +s, +2s, ...
+        k = len(col)
+        base_offsets = (np.arange(k) - (k - 1) / 2.0) * jitter_step
+        # map these offsets back to original series order
+        jitter_offsets[order, j] = base_offsets
+    # else: leave jitter_offsets[:, j] as zeros (no jitter here)
+
+# --- PLOT ---
+
 fig, ax = plt.subplots(figsize=(7, 7), subplot_kw=dict(polar=True))
 
-# Plot each (Noise Area, Noise Level) combination
-for _, row in radar_data.iterrows():
+for i, (_, row) in enumerate(radar_data.iterrows()):
     label = f"{row['Noise Area']} - Noise {row['Noise Level']}"
-    values = [row[cat] for cat in categories]
-    values += values[:1]
+    values = np.array([row[cat] for cat in categories])
+    
+    # apply precomputed jitter for this series
+    jit_angles = base_angles + jitter_offsets[i]
+    
+    # close the loop
+    values_closed = np.concatenate([values, values[:1]])
+    angles_closed = np.concatenate([jit_angles, jit_angles[:1]])
+    
     if row['Noise Area'] == 'target' and row['Noise Level'] == 0.0:
         label = 'Noise 0'
-    ax.plot(angles, values, marker='o', label=label)
-    ax.fill(angles, values, alpha=0.1)
+    ax.plot(angles_closed, values_closed, marker='o', label=label, markersize=markersize, linewidth=linewidth)
+    ax.fill(angles_closed, values_closed, alpha=0.1)
 
 # Aesthetic settings
 ax.set_ylim(0.60, 0.85)
-ax.set_xticks(angles[:-1])
+ax.set_xticks(base_angles)
 ax.set_xticklabels(categories, fontsize=11)
 ax.tick_params(axis='x', pad=15)
 ax.set_title('Mean RefCLIPScore per Relatedness Level, Noise Area, and Noise Level', y=1.1)
@@ -363,15 +407,14 @@ handles, labels = ax.get_legend_handles_labels()
 sorted_items = sorted(zip(labels, handles), key=lambda x: 0 if x[0] == 'Noise 0' else 1)
 sorted_labels, sorted_handles = zip(*sorted_items)
 
-# Adjust subplot to make room for legend
-fig.subplots_adjust(right=0.75)  # Shrink plot to make room on the right
-
+fig.subplots_adjust(right=0.75)
 ax.legend(
     sorted_handles, 
     sorted_labels, 
     loc='upper left',
-    bbox_to_anchor=(1.05, 1.05),  # Fully outside on the right, vertically centered
+    bbox_to_anchor=(1.05, 1.10),
 )
+
 plt.tight_layout()
 plt.show()
 
@@ -584,30 +627,62 @@ radar_data_soft = (
     soft_accuracy_by_combined
     .groupby(['Noise Area', 'Noise Level', 'Rel. Level'])['soft_accuracy']
     .mean()
-   .unstack('Rel. Level')  # Columns: Relatedness Level
-   .reset_index()
+    .unstack('Rel. Level')  # Columns: Relatedness Level
+    .reset_index()
 )
 
 categories = soft_accuracy_by_combined['Rel. Level'].unique().tolist()
 num_vars = len(categories)
-angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
-angles += angles[:1]
+base_angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False)
+
+# --- PRECOMPUTE VALUE-BASED JITTER OFFSETS (per series x angle) ---
+
+values_matrix_soft = radar_data_soft[categories].to_numpy()  # (n_series, n_angles)
+n_series_soft = values_matrix_soft.shape[0]
+
+jitter_offsets_soft = np.zeros_like(values_matrix_soft)
+
+for j in range(num_vars):
+    col = values_matrix_soft[:, j]   # values for angle j across all series
+    order = np.argsort(col)
+    sorted_vals = col[order]
+
+    if len(sorted_vals) > 1:
+        diffs = np.diff(sorted_vals)
+        min_diff = np.min(diffs)
+    else:
+        min_diff = np.inf
+
+    # jitter only if some values are "too close"
+    if min_diff < similarity_threshold:
+        k = len(col)
+        base_offsets = (np.arange(k) - (k - 1) / 2.0) * jitter_step
+        jitter_offsets_soft[order, j] = base_offsets
+    # else: keep zeros (no jitter for this angle)
+
+# --- PLOT ---
 
 fig, ax = plt.subplots(figsize=(7, 7), subplot_kw=dict(polar=True))
 
-# Plot each (Noise Area, Noise Level) combination
-for _, row in radar_data_soft.iterrows():
+for i, (_, row) in enumerate(radar_data_soft.iterrows()):
     label = f"{row['Noise Area']} - Noise {row['Noise Level']}"
-    values = [row[cat] for cat in categories]
-    values += values[:1]
+    values = np.array([row[cat] for cat in categories])
+
+    # apply precomputed jitter
+    jit_angles = base_angles + jitter_offsets_soft[i]
+
+    # close the loop
+    values_closed = np.concatenate([values, values[:1]])
+    angles_closed = np.concatenate([jit_angles, jit_angles[:1]])
+
     if row['Noise Area'] == 'target' and row['Noise Level'] == 0.0:
         label = 'Noise 0'
-    ax.plot(angles, values, marker='o', label=label)
-    ax.fill(angles, values, alpha=0.1)
+    ax.plot(angles_closed, values_closed, marker='o', label=label, markersize=markersize,linewidth=linewidth)
+    ax.fill(angles_closed, values_closed, alpha=0.1)
 
 # Aesthetic settings
 ax.set_ylim(0, 1)
-ax.set_xticks(angles[:-1])
+ax.set_xticks(base_angles)
 ax.set_xticklabels(categories, fontsize=11)
 ax.tick_params(axis='x', pad=15)
 ax.set_title('Mean Accuracy per Relatedness Level, Noise Area, and Noise Level', y=1.1)
@@ -622,17 +697,17 @@ handles, labels = ax.get_legend_handles_labels()
 sorted_items = sorted(zip(labels, handles), key=lambda x: 0 if x[0] == 'Noise 0' else 1)
 sorted_labels, sorted_handles = zip(*sorted_items)
 
-# Adjust subplot to make room for legend
-fig.subplots_adjust(right=0.75)  # Shrink plot to make room on the right
-
+fig.subplots_adjust(right=0.75)
 ax.legend(
-    sorted_handles, 
-    sorted_labels, 
+    sorted_handles,
+    sorted_labels,
     loc='upper left',
-    bbox_to_anchor=(1.05, 1.05),  # Fully outside on the right, vertically centered
+    bbox_to_anchor=(1.05, 1.10),
 )
+
 plt.tight_layout()
 plt.show()
+
 
 #%%
 
