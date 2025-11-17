@@ -329,6 +329,10 @@ grouped_means = df_exploded.groupby(['Rel. Level', 'Noise Level', 'Noise Area', 
 grouped_means_correct = df_exploded_correct.groupby(['Rel. Level', 'Noise Level', 'Noise Area', 'layer'])['attn_ratio'].mean().reset_index()
 grouped_means_wrong = df_exploded_wrong.groupby(['Rel. Level', 'Noise Level', 'Noise Area', 'layer'])['attn_ratio'].mean().reset_index()
 
+grouped_means['Dataset'] = 'COOCO'
+grouped_means_correct['Dataset'] = 'COOCO'
+grouped_means_wrong['Dataset'] = 'COOCO'
+
 # --- Average across layers ---
 grouped_layers = df_exploded.groupby(['Rel. Level', 'Noise Level', 'Noise Area'])['attn_ratio'].mean().reset_index()
 grouped_layers_correct = df_exploded_correct.groupby(['Rel. Level', 'Noise Level', 'Noise Area'])['attn_ratio'].mean().reset_index()
@@ -351,30 +355,112 @@ merged_layers.rename(columns={'attn_ratio': 'attn_ratio_wrong'}, inplace=True)
 # Export to LaTeX for paper-style visualization
 print(merged_layers.round(3).to_latex(index=False))
 
-
-#%%
 ##################################################
 # === VISUALIZATION: ATTENTION RATIO BY LAYER ===
 ##################################################
-grouped_means = grouped_means_wrong
-y_lim = 1
+grouped_means_visions = pd.read_csv('grouped_means_visions.csv')
+grouped_means_correct_visions = pd.read_csv('grouped_means_correct_visions.csv')
+grouped_means_incorrect_visions = pd.read_csv('grouped_means_incorrect_visions.csv')
 
-# --- Plot line graphs by noise level ---
+grouped_means_visions['Dataset'] = 'VISIONS'
+grouped_means_correct_visions['Dataset'] = 'VISIONS'
+grouped_means_incorrect_visions['Dataset'] = 'VISIONS'
+
+grouped_means_visions['Noise Area'] = (
+    grouped_means_visions['Noise Area'].str.lower()
+)
+grouped_means_visions['Rel. Level'] = (
+    grouped_means_visions['Rel. Level'].str.lower()
+)
+grouped_means_correct_visions['Noise Area'] = (
+    grouped_means_correct_visions['Noise Area'].str.lower()
+)
+grouped_means_correct_visions['Rel. Level'] = (
+    grouped_means_correct_visions['Rel. Level'].str.lower()
+)
+grouped_means_incorrect_visions['Noise Area'] = (
+    grouped_means_incorrect_visions['Noise Area'].str.lower()
+)
+grouped_means_incorrect_visions['Rel. Level'] = (
+    grouped_means_incorrect_visions['Rel. Level'].str.lower()
+)
+
+grouped_means_visions[(grouped_means_visions['Noise Area'] == 'target') & (grouped_means_visions['Noise Level'] == 0.0)]
+toconcat1 = grouped_means_visions[(grouped_means_visions['Noise Area'] == 'target') & (grouped_means_visions['Noise Level'] == 0.0)]
+toconcat2 = grouped_means_visions[(grouped_means_visions['Noise Area'] == 'target') & (grouped_means_visions['Noise Level'] == 0.0)]
+toconcat1['Noise Area'] = 'context'
+toconcat2['Noise Area'] = 'all'
+grouped_means_visions = pd.concat([grouped_means_visions, toconcat1, toconcat2], ignore_index=True)
+
+grouped_means_correct_visions[(grouped_means_correct_visions['Noise Area'] == 'target') & (grouped_means_correct_visions['Noise Level'] == 0.0)]
+toconcat1 = grouped_means_correct_visions[(grouped_means_correct_visions['Noise Area'] == 'target') & (grouped_means_correct_visions['Noise Level'] == 0.0)]
+toconcat2 = grouped_means_correct_visions[(grouped_means_correct_visions['Noise Area'] == 'target') & (grouped_means_correct_visions['Noise Level'] == 0.0)]
+toconcat1['Noise Area'] = 'context'
+toconcat2['Noise Area'] = 'all'
+grouped_means_correct_visions = pd.concat([grouped_means_correct_visions, toconcat1, toconcat2], ignore_index=True)     
+
+grouped_means_incorrect_visions[(grouped_means_incorrect_visions['Noise Area'] == 'target') & (grouped_means_incorrect_visions['Noise Level'] == 0.0)]
+toconcat1 = grouped_means_incorrect_visions[(grouped_means_incorrect_visions['Noise Area'] == 'target') & (grouped_means_incorrect_visions['Noise Level'] == 0.0)]
+toconcat2 = grouped_means_incorrect_visions[(grouped_means_incorrect_visions['Noise Area'] == 'target') & (grouped_means_incorrect_visions['Noise Level'] == 0.0)]
+toconcat1['Noise Area'] = 'context'
+toconcat2['Noise Area'] = 'all'
+grouped_means_incorrect_visions = pd.concat([grouped_means_incorrect_visions, toconcat1, toconcat2], ignore_index=True)
+
+
+grouped_means = pd.concat([grouped_means, grouped_means_visions], ignore_index=True)
+grouped_means_correct = pd.concat([grouped_means_correct, grouped_means_correct_visions], ignore_index=True)
+grouped_means_incorrect = pd.concat([grouped_means_wrong, grouped_means_incorrect_visions], ignore_index=True)
+
+print(grouped_means['attn_ratio'][grouped_means['Noise Level'] == 0.0].mean())
+
+
+#%%
+grouped_means = grouped_means_correct
+
+#%%
+y_lim = 1.0
+# Define the desired order of Rel. Level (edit this to your actual values)
+REL_ORDER = ["low", "medium", "high", 'same target', 'original','incongruent', 'congruent']   # <-- put your own string levels here
+order_map = {v: i for i, v in enumerate(REL_ORDER)}
+
+def extract_rel_str(label: str) -> str:
+    # from "Area: context, Rel: low" -> "low"
+    return label.split("Rel:")[1].strip()
+
 for noise_level_filter in [0.0, 0.5, 1.0]:
     filtered_data = grouped_means[grouped_means['Noise Level'] == noise_level_filter]
     plt.figure(figsize=(8, 6))
-    for (condition, rel_level), sub_df in filtered_data.groupby(['Noise Area', 'Rel. Level']):
-        if noise_level_filter == 0.0 and condition != 'target':
+
+    for (condition, rel_level, dataset), sub_df in filtered_data.groupby(['Noise Area', 'Rel. Level', 'Dataset']):
+        if noise_level_filter == 0.0 and condition not in ['target', 'Target']:
             continue
         sub_df = sub_df.sort_values(by='layer')
-        plt.plot(sub_df['layer'], sub_df['attn_ratio'], marker='o', label=f'Area: {condition}, Rel: {rel_level}')
+
+        if dataset == 'VISIONS':
+            plt.plot(sub_df['layer'], sub_df['attn_ratio'],
+                     marker='x', label=f'Dataset: VISIONS, Rel: {rel_level}')
+        else:
+            plt.plot(sub_df['layer'], sub_df['attn_ratio'],
+                     marker='o', label=f'Dataset: COOCO, Rel: {rel_level}')
+
     plt.xlabel('Layer')
     plt.ylabel('Mean Attention Ratio')
     plt.ylim(0, y_lim)
     plt.title(f'Mean Attention Ratio per Layer (Noise = {noise_level_filter})')
-    plt.legend()
+
+    # --- legend sorted by Rel. Level (string) ---
+    ax = plt.gca()
+    lines, labels = ax.get_legend_handles_labels()
+
+    sorted_pairs = sorted(
+        zip(lines, labels),
+        key=lambda x: order_map.get(extract_rel_str(x[1]), 999)
+    )
+    lines_sorted, labels_sorted = zip(*sorted_pairs)
+    ax.legend(lines_sorted, labels_sorted)
     plt.grid()
-    plt.show()
+
+plt.show()
 
 
 #%%
@@ -384,15 +470,37 @@ for noise_level_filter in [0.0, 0.5, 1.0]:
 noise_levels = [0.0, 0.5, 1.0]
 conditions = ['all', 'context', 'target']
 
-fig, axes = plt.subplots(len(noise_levels), len(conditions), figsize=(15, 12), sharex=True, sharey=True)
+fig, axes = plt.subplots(len(noise_levels), len(conditions),
+                         figsize=(15, 12), sharex=True, sharey=True)
 
 for i, nl in enumerate(noise_levels):
     df_n = grouped_means[grouped_means['Noise Level'] == nl]
     for j, cond in enumerate(conditions):
         ax = axes[i, j]
         df_nc = df_n[df_n['Noise Area'] == cond]
-        pivot = df_nc.pivot(index='Rel. Level', columns='layer', values='attn_ratio')
-        sns.heatmap(pivot, ax=ax, annot=False, vmin=0, vmax=1, linewidths=0.5, linecolor='gray', cbar=(j == len(conditions) - 1))
+
+        if df_nc.empty:
+            ax.set_visible(False)
+            continue
+
+        pivot = df_nc.pivot_table(
+            index='Rel. Level',
+            columns='layer',
+            values='attn_ratio',
+            aggfunc='mean'  # or 'median', 'max', etc.
+        )
+
+        sns.heatmap(
+            pivot,
+            ax=ax,
+            annot=False,
+            vmin=0,
+            vmax=1,
+            linewidths=0.5,
+            linecolor='gray',
+            cbar=(j == len(conditions) - 1)
+        )
+
         if i == 0:
             ax.set_title(cond.capitalize())
         if j == 0:
@@ -409,19 +517,48 @@ plt.show()
 ##################################################
 from matplotlib.colors import TwoSlopeNorm
 
-vmin, vmax, vcenter = 0, 1, 0.18
+# --- Define your desired order for Rel. Level strings ---
+order_map = {v: i for i, v in enumerate(REL_ORDER)}
+
+vmin, vmax, vcenter = 0, 1, 0.19
 print(f"vmin: {vmin}, vcenter: {vcenter}, vmax: {vmax}")
 
-fig, axes = plt.subplots(len(noise_levels), len(conditions), figsize=(15, 12), sharex=True, sharey=True)
+fig, axes = plt.subplots(len(noise_levels), len(conditions),
+                         figsize=(15, 12), sharex=True, sharey=True)
 
 for i, nl in enumerate(noise_levels):
     df_n = grouped_means[grouped_means['Noise Level'] == nl]
     for j, cond in enumerate(conditions):
         ax = axes[i, j]
         df_nc = df_n[df_n['Noise Area'] == cond]
-        pivot = df_nc.pivot(index='Rel. Level', columns='layer', values='attn_ratio')
+
+        if df_nc.empty:
+            ax.set_visible(False)
+            continue
+
+        # Pivot table (handle duplicates)
+        pivot = df_nc.pivot_table(
+            index='Rel. Level',
+            columns='layer',
+            values='attn_ratio',
+            aggfunc='mean'
+        )
+
+        # --- Sort rows (Rel. Level) by custom order ---
+        pivot = pivot.loc[sorted(pivot.index, key=lambda x: order_map.get(x, 999))]
+
         norm = TwoSlopeNorm(vmin=vmin, vcenter=vcenter, vmax=vmax)
-        sns.heatmap(pivot, ax=ax, cmap="RdBu_r", norm=norm, linewidths=0.5, linecolor='gray', cbar=(j == len(conditions) - 1))
+
+        sns.heatmap(
+            pivot,
+            ax=ax,
+            cmap="RdBu_r",
+            norm=norm,
+            linewidths=0.5,
+            linecolor='gray',
+            cbar=(j == len(conditions) - 1)
+        )
+
         if i == 0:
             ax.set_title(cond.capitalize(), fontsize=20)
         if j == 0:

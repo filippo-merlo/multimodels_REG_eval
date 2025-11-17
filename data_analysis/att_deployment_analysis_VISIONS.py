@@ -397,12 +397,15 @@ print(merged_layers.round(3).to_latex(index=False))
 ##################################################
 ############### LINE PLOT SECTION ################
 ##################################################
-grouped_means = grouped_means_correct
+grouped_means = grouped_means_wrong
 y_lim = 1
+grouped_means.to_csv("grouped_means_incorrect_visions.csv", index=False)
 
 # --- Noise = 0.0 ---
 noise_level_filter = 0.0
 filtered_data = grouped_means[grouped_means['Noise Level'] == noise_level_filter]
+
+#%%
 
 plt.figure(figsize=(8, 6))
 for (condition, rel_level), sub_df in filtered_data.groupby(['Noise Area', 'Rel. Level']):
