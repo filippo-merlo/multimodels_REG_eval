@@ -114,6 +114,9 @@ print("="*60 + "\n")
 # --- Subset: no-noise condition only ---
 df_no_noise = df[df['Noise Level'] == 0.0].copy()
 
+# --- Filter and keep only correct samples ---
+df_no_noise = df_no_noise[df_no_noise['soft_accuracy'] == 1].copy()
+
 # --- Parse 'object.consistency' into numeric mean and std ---
 df_no_noise[['obj_consistency_mean', 'obj_consistency_std']] = (
     df_no_noise['object.consistency']
@@ -134,9 +137,7 @@ layer_stats = (
     .groupby('layer')
     .agg(
         mean_attn=('attn_ratio', 'mean'),
-        std_attn=('attn_ratio', 'std'),
-        corr_with_consistency=('attn_ratio', 
-            lambda x: x.corr(df_no_noise_expanded.loc[x.index, 'obj_consistency_mean']))
+        std_attn=('attn_ratio', 'std')
     )
     .reset_index()
 )
@@ -147,7 +148,7 @@ layer_stats_sorted = layer_stats.sort_values(by='mean_attn', ascending=False)
 
 # --- Print summary ---
 print("\n" + "="*60)
-print("LAYER-WISE ATTENTION VS OBJECT CONSISTENCY (NO NOISE)")
+print("LAYER-WISE ATTENTION (NO NOISE)")
 print("="*60)
 print(layer_stats_sorted.round(3))
 print("="*60 + "\n")
@@ -171,16 +172,18 @@ ax1.legend()
 plt.tight_layout()
 plt.show()
 
-# --- Plot correlation with consistency per layer ---
-plt.figure(figsize=(8, 5))
-plt.bar(layer_stats['layer'], layer_stats['corr_with_consistency'], color='gray')
-plt.axhline(0, color='red', linestyle='--')
-plt.xlabel('Layer')
-plt.ylabel('Correlation with Object Consistency')
-plt.title('Layer-wise Correlation Between Attention and Consistency')
-plt.grid(True)
-plt.tight_layout()
-plt.show()
+# --- After computing layer_stats and cv_attn ---
+
+q_mean = layer_stats['mean_attn'].quantile(0.75)   # top 25% attention
+#q_cv   = layer_stats['cv_attn'].quantile(0.50)     # below median variability
+
+top_layers_attn = layer_stats[
+    (layer_stats['mean_attn'] >= q_mean) #&
+    #(layer_stats['cv_attn']   <= q_cv)
+].sort_values('mean_attn', ascending=False)
+
+print("Selected layers (high mean, low variability):")
+print(top_layers_attn)
 
 ##################################################
 ###### NON-LINEAR (U-SHAPE) / QUADRATIC ANALYSIS ##
@@ -194,8 +197,11 @@ df_no_noise = df[df['Noise Level'] == 0.0].copy()
 df_no_noise = df_no_noise[df_no_noise['soft_accuracy'] == 1].copy()
 
 # --- Compute mean attention ratios (mid-level layers) ---
+selected_layers = top_layers_attn['layer'].tolist()
 df_no_noise['mean_attn_ratio'] = df_no_noise['attn_ratio'].apply(
-    lambda x: np.mean(x[13:17]) if isinstance(x, (list, np.ndarray)) and len(x) > 16 else np.nan
+    #lambda x: np.mean(x[13:17]) if isinstance(x, (list, np.ndarray)) and len(x) > 16 else np.nan
+    lambda x: np.mean([x[i] for i in selected_layers
+                       if isinstance(x, (list, np.ndarray)) and i < len(x)])
 )
 
 # --- Parse 'object.consistency' field (extract mean and std) ---
@@ -207,21 +213,22 @@ df_no_noise[['obj_consistency_mean', 'obj_consistency_std']] = (
 
 import matplotlib.pyplot as plt
 
-# --- Compute IQR bounds (mild trimming) ---
-Q1 = df_no_noise['mean_attn_ratio'].quantile(0.25)
-Q3 = df_no_noise['mean_attn_ratio'].quantile(0.75)
-IQR = Q3 - Q1
-lower = Q1 - 3 * IQR
-upper = Q3 + 3 * IQR
+## --- Compute IQR bounds (mild trimming) ---
+#Q1 = df_no_noise['mean_attn_ratio'].quantile(0.25)
+#Q3 = df_no_noise['mean_attn_ratio'].quantile(0.75)
+#IQR = Q3 - Q1
+#lower = Q1 - 3 * IQR
+#upper = Q3 + 3 * IQR
+#
+## --- Count and remove outliers ---
+#n_before = len(df_no_noise)
+#df_no_noise = df_no_noise[
+#    (df_no_noise['mean_attn_ratio'] >= lower) &
+#    (df_no_noise['mean_attn_ratio'] <= upper)
+#].copy()
+#n_after = len(df_no_noise)
+#n_removed = n_before - n_after
 
-# --- Count and remove outliers ---
-n_before = len(df_no_noise)
-df_no_noise = df_no_noise[
-    (df_no_noise['mean_attn_ratio'] >= lower) &
-    (df_no_noise['mean_attn_ratio'] <= upper)
-].copy()
-n_after = len(df_no_noise)
-n_removed = n_before - n_after
 
 # --- Plot histogram ---
 plt.figure(figsize=(6,4))
@@ -231,7 +238,7 @@ plt.ylabel("Frequency")
 plt.title("Distribution after Outlier Removal")
 plt.show()
 
-print(f"Removed {n_removed} outliers out of {n_before} samples ({n_removed / n_before:.2%}).")
+#print(f"Removed {n_removed} outliers out of {n_before} samples ({n_removed / n_before:.2%}).")
 
 # --- Check parsing ---
 print("Parsed object consistency columns:\n",
@@ -330,6 +337,39 @@ plt.legend(frameon=True, loc='best')
 sns.despine()
 plt.tight_layout()
 plt.show()
+
+#%%
+##################################################
+# SIGNIFICANCE TESTS FOR QUADRATIC (U-SHAPE)
+##################################################
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+
+# --- Regression dataframe ---
+reg_df = pd.DataFrame({'y': y, 'x': x})
+
+# --- Linear model: y ~ x ---
+lin_mod = smf.ols('y ~ x', data=reg_df).fit()
+
+# --- Quadratic model: y ~ x + x² ---
+quad_mod = smf.ols('y ~ x + I(x**2)', data=reg_df).fit()
+
+print("\n=== Linear model coefficients ===")
+print(lin_mod.summary().tables[1])   # includes p-value for x
+
+print("\n=== Quadratic model coefficients ===")
+print(quad_mod.summary().tables[1])  # p-value for I(x**2) tests curvature
+
+# --- Nested model comparison (does quadratic term help?) ---
+anova_res = sm.stats.anova_lm(lin_mod, quad_mod)
+print("\n=== Nested model comparison (linear vs quadratic) ===")
+print(anova_res)
+
+# --- Location of the minimum of the quadratic (on normalized x) ---
+a = quad_mod.params['I(x ** 2)']
+b = quad_mod.params['x']
+x_vertex = -b / (2 * a)
+print(f"\nQuadratic vertex (minimum) at x = {x_vertex:.3f} (normalized scale)")
 
 
 #%%

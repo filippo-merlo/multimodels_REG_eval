@@ -134,6 +134,82 @@ df['attn_ratio'] = df.progress_apply(compute_ratio, axis=1)
 df['soft_accuracy'] = (df['long_caption_text_similarity_scores'] >= 0.90).astype(int)
 
 #%%
+
+# --- Subset: retain only no-noise condition ---
+df_no_noise = df[df['Noise Level'] == 0.0].copy()
+
+# --- Keep only correctly predicted samples ---
+df_no_noise = df_no_noise[df_no_noise['soft_accuracy'] == 1].copy()
+
+# --- Exclude 'original' and 'same target' relevance levels ---
+df_no_noise = df_no_noise[
+    (df_no_noise['Rel. Level'] != 'original') &
+    (df_no_noise['Rel. Level'] != 'same target')
+].copy()
+
+
+# --- Expand lists to have one row per layer ---
+df_no_noise_expanded = df_no_noise.explode('attn_ratio')
+df_no_noise_expanded['layer'] = df_no_noise_expanded.groupby(level=0).cumcount()
+
+# --- Convert attention values to float ---
+df_no_noise_expanded['attn_ratio'] = pd.to_numeric(df_no_noise_expanded['attn_ratio'], errors='coerce')
+
+# --- Compute layer-wise statistics ---
+layer_stats = (
+    df_no_noise_expanded
+    .groupby('layer')
+    .agg(
+        mean_attn=('attn_ratio', 'mean'),
+        std_attn=('attn_ratio', 'std')
+    )
+    .reset_index()
+)
+
+# --- Rank layers by mean attention and stability ---
+layer_stats['cv_attn'] = layer_stats['std_attn'] / layer_stats['mean_attn']  # coefficient of variation
+layer_stats_sorted = layer_stats.sort_values(by='mean_attn', ascending=False)
+
+# --- Print summary ---
+print("\n" + "="*60)
+print("LAYER-WISE ATTENTION (NO NOISE)")
+print("="*60)
+print(layer_stats_sorted.round(3))
+print("="*60 + "\n")
+
+# --- Plot: mean and variability across layers ---
+fig, ax1 = plt.subplots(figsize=(8, 5))
+
+ax1.plot(layer_stats['layer'], layer_stats['mean_attn'], marker='o', label='Mean attention')
+ax1.fill_between(
+    layer_stats['layer'],
+    layer_stats['mean_attn'] - layer_stats['std_attn'],
+    layer_stats['mean_attn'] + layer_stats['std_attn'],
+    alpha=0.2, label='±1 std'
+)
+ax1.set_xlabel('Layer')
+ax1.set_ylabel('Mean Attention Ratio')
+ax1.set_title('Layer-wise Mean Attention Ratio (Noise = 0)')
+ax1.grid(True)
+ax1.legend()
+
+plt.tight_layout()
+plt.show()
+
+# --- After computing layer_stats and cv_attn ---
+
+q_mean = layer_stats['mean_attn'].quantile(0.75)   # top 25% attention
+#q_cv   = layer_stats['cv_attn'].quantile(0.50)     # below median variability
+
+top_layers_attn = layer_stats[
+    (layer_stats['mean_attn'] >= q_mean) #&
+    #(layer_stats['cv_attn']   <= q_cv)
+].sort_values('mean_attn', ascending=False)
+
+print("Selected layers (high mean, low variability):")
+print(top_layers_attn)
+
+
 ##################################################
 ###### LINEAR AND QUADRATIC MODEL FITS ###########
 ###### (WITH NORMALIZED RELEVANCE SCORE) #########
@@ -141,49 +217,42 @@ df['soft_accuracy'] = (df['long_caption_text_similarity_scores'] >= 0.90).astype
 from scipy import stats
 import numpy as np
 
-# --- Subset: retain only no-noise condition ---
-df_no_noise = df[df['Noise Level'] == 0.0].copy()
-df_no_noise = df_no_noise[
-    (df_no_noise['Rel. Level'] != 'original') 
-].copy()
-
-
-# --- Keep only correctly predicted samples ---
-df_no_noise = df_no_noise[df_no_noise['soft_accuracy'] == 1].copy()
 
 # --- Compute mean attention ratio (mid-level layers: 13–16) ---
+selected_layers = top_layers_attn['layer'].tolist()
 df_no_noise['mean_attn_ratio'] = df_no_noise['attn_ratio'].apply(
-    lambda x: np.mean(x[13:17]) if isinstance(x, (list, np.ndarray)) and len(x) > 16 else np.nan
-    #lambda x: np.mean(x) if isinstance(x, (list, np.ndarray)) and len(x) > 16 else np.nan
+    #lambda x: np.mean(x[13:17]) if isinstance(x, (list, np.ndarray)) and len(x) > 16 else np.nan
+    lambda x: np.mean([x[i] for i in selected_layers
+                       if isinstance(x, (list, np.ndarray)) and i < len(x)])
 )
 
 import matplotlib.pyplot as plt
 
 # --- Compute IQR bounds (mild trimming) ---
-Q1 = df_no_noise['mean_attn_ratio'].quantile(0.25)
-Q3 = df_no_noise['mean_attn_ratio'].quantile(0.75)
-IQR = Q3 - Q1
-lower = Q1 - 3 * IQR
-upper = Q3 + 3 * IQR
-
-# --- Count and remove outliers ---
-n_before = len(df_no_noise)
-df_no_noise = df_no_noise[
-    (df_no_noise['mean_attn_ratio'] >= lower) &
-    (df_no_noise['mean_attn_ratio'] <= upper)
-].copy()
-n_after = len(df_no_noise)
-n_removed = n_before - n_after
+#Q1 = df_no_noise['mean_attn_ratio'].quantile(0.25)
+#Q3 = df_no_noise['mean_attn_ratio'].quantile(0.75)
+#IQR = Q3 - Q1
+#lower = Q1 - 3 * IQR
+#upper = Q3 + 3 * IQR
+#
+## --- Count and remove outliers ---
+#n_before = len(df_no_noise)
+#df_no_noise = df_no_noise[
+#    (df_no_noise['mean_attn_ratio'] >= lower) &
+#    (df_no_noise['mean_attn_ratio'] <= upper)
+#].copy()
+#n_after = len(df_no_noise)
+#n_removed = n_before - n_after
 
 # --- Plot histogram ---
-plt.figure(figsize=(6,4))
-plt.hist(df_no_noise['mean_attn_ratio'], bins=40, color='steelblue', edgecolor='black', alpha=0.7)
-plt.xlabel("Mean Attention Ratio")
-plt.ylabel("Frequency")
-plt.title("Distribution after Outlier Removal")
-plt.show()
+#plt.figure(figsize=(6,4))
+#plt.hist(df_no_noise['mean_attn_ratio'], bins=40, color='steelblue', edgecolor='black', alpha=0.7)
+#plt.xlabel("Mean Attention Ratio")
+#plt.ylabel("Frequency")
+#plt.title("Distribution after Outlier Removal")
+#plt.show()
 
-print(f"Removed {n_removed} outliers out of {n_before} samples ({n_removed / n_before:.2%}).")
+#print(f"Removed {n_removed} outliers out of {n_before} samples ({n_removed / n_before:.2%}).")
 
 # --- Remove missing values for reliable model fitting ---
 valid_mask = df_no_noise['rel_score'].notna() & df_no_noise['mean_attn_ratio'].notna()
@@ -277,6 +346,38 @@ plt.legend(frameon=True, loc='best')
 sns.despine()
 plt.tight_layout()
 plt.show()
+
+##################################################
+# SIGNIFICANCE TESTS FOR QUADRATIC (U-SHAPE)
+##################################################
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+
+# --- Regression dataframe ---
+reg_df = pd.DataFrame({'y': y, 'x': x})
+
+# --- Linear model: y ~ x ---
+lin_mod = smf.ols('y ~ x', data=reg_df).fit()
+
+# --- Quadratic model: y ~ x + x² ---
+quad_mod = smf.ols('y ~ x + I(x**2)', data=reg_df).fit()
+
+print("\n=== Linear model coefficients ===")
+print(lin_mod.summary().tables[1])   # includes p-value for x
+
+print("\n=== Quadratic model coefficients ===")
+print(quad_mod.summary().tables[1])  # p-value for I(x**2) tests curvature
+
+# --- Nested model comparison (does quadratic term help?) ---
+anova_res = sm.stats.anova_lm(lin_mod, quad_mod)
+print("\n=== Nested model comparison (linear vs quadratic) ===")
+print(anova_res)
+
+# --- Location of the minimum of the quadratic (on normalized x) ---
+a = quad_mod.params['I(x ** 2)']
+b = quad_mod.params['x']
+x_vertex = -b / (2 * a)
+print(f"\nQuadratic vertex (minimum) at x = {x_vertex:.3f} (normalized scale)")
 
 
 #%%
