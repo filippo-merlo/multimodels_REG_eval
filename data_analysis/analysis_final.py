@@ -163,6 +163,7 @@ merged_accuracy_similarity = merged_accuracy_similarity.reset_index()
 #merged_accuracy_similarity = merged_accuracy_similarity[merged_accuracy_similarity['Noise Level'] != 1.0]
 merged_accuracy_similarity
 
+#%%
 # Melt the dataframe for seaborn compatibility
 df_melted = merged_accuracy_similarity.melt(
     id_vars=['Noise Area', 'Noise Level', 'Rel. Level'],
@@ -221,6 +222,243 @@ if legend:
     legend.set_bbox_to_anchor((1.06, 0.5))  # Moves it outside the plot, center right
 
 # Show plot
+plt.show()
+#%%
+import seaborn as sns
+import matplotlib.pyplot as plt
+import pandas as pd
+
+# --- Prepare data ------------------------------------------------------------
+df_melted = merged_accuracy_similarity.melt(
+    id_vars=['Noise Area', 'Noise Level', 'Rel. Level'],
+    var_name='Accuracy Type',
+    value_name='Scene Output Similarity'
+)
+df_melted['Noise Level'] = df_melted['Noise Level'].astype(float)
+
+df_melted['Rel. Level Short'] = df_melted['Rel. Level'].replace({
+    'original': 'original',
+    'same target': 'same target',
+    'high': 'high',
+    'medium': 'medium',
+    'low': 'low'
+})
+
+df_melted['Noise Area Short'] = df_melted['Noise Area'].replace({
+    'target': 'target',
+    'context': 'context',
+    'all': 'all'
+    # NOTE: we intentionally do NOT touch the '--' / '–' value here
+})
+
+# --- Define baseline vs. other areas (use original Noise Area) ---------------
+baseline_mask = df_melted['Noise Area'].isin(['--', '–', 'none'])
+baseline = df_melted[baseline_mask].copy()
+df_plot = df_melted[~baseline_mask].copy()
+
+row_order = ['original', 'same target', 'high', 'medium', 'low']
+col_order = ['target', 'context', 'all']
+
+df_plot['Rel. Level Short'] = pd.Categorical(df_plot['Rel. Level Short'],
+                                             categories=row_order, ordered=True)
+df_plot['Noise Area Short'] = pd.Categorical(df_plot['Noise Area Short'],
+                                             categories=col_order, ordered=True)
+
+# one baseline value per Rel × Accuracy Type
+baseline_mean = (
+    baseline
+    .groupby(['Rel. Level Short', 'Accuracy Type'], as_index=False)
+    ['Scene Output Similarity'].mean()
+)
+
+# --- Style -------------------------------------------------------------------
+sns.set_theme(
+    style="white",
+    context="paper",
+    rc={
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+        "axes.grid": True,
+        "grid.color": "#e0e0e0",
+        "grid.linestyle": "--",
+        "grid.linewidth": 0.5,
+        "axes.edgecolor": "0.2",
+        "axes.linewidth": 0.8,
+        "xtick.direction": "out",
+        "ytick.direction": "out",
+    }
+)
+
+g = sns.relplot(
+    data=df_plot,
+    x='Noise Level',
+    y='Scene Output Similarity',
+    hue='Accuracy Type',
+    style='Accuracy Type',
+    kind='line',
+    markers=True,
+    linewidth=1.5,
+    markersize=5,
+    col='Noise Area Short',
+    row='Rel. Level Short',
+    col_order=col_order,
+    row_order=row_order,
+    height=2.1,
+    aspect=1.4,
+    facet_kws={'margin_titles': True}
+)
+
+# --- color mapping consistent with seaborn's default palette -----------------
+palette = sns.color_palette()
+acc_color = {
+    'Correct':   palette[0],   # same blue as main line
+    'Incorrect': palette[1],   # same orange as main line
+}
+
+# --- Add horizontal baselines with same colors but dotted style -------------
+for r, rel in enumerate(row_order):
+    for c, area in enumerate(col_order):
+        ax = g.axes[r, c]
+        for acc in ['Correct', 'Incorrect']:
+            row = baseline_mean[
+                (baseline_mean['Rel. Level Short'] == rel) &
+                (baseline_mean['Accuracy Type'] == acc)
+            ]
+            if row.empty:
+                continue
+            y0 = float(row['Scene Output Similarity'])
+            ax.axhline(
+                y=y0,
+                linestyle=':',
+                linewidth=1.5,
+                color=acc_color[acc],
+                alpha=0.9,
+                zorder=1
+            )
+# --- Formatting --------------------------------------------------------------
+for ax in g.axes.flat:
+    ax.set_xticks([0.5, 1.0])
+    ax.set_xlim(0.45, 1.05)  # prevents squeezing at the left
+    ax.set_ylim(0.78, 0.86)
+
+    ax.tick_params(axis='both', labelsize=8)
+
+    # light horizontal grid only
+    ax.grid(True, axis='y')
+    ax.grid(False, axis='x')
+
+g.set_titles(row_template="Rel={row_name}", col_template="Area={col_name}")
+g.set_axis_labels("Noise Level", "Semantic Similarity")
+
+g.fig.subplots_adjust(top=0.90, hspace=0.25, wspace=0.15)
+g.fig.suptitle("Scene–Output Text-based Semantic Similarity", fontsize=11)
+
+legend = g._legend
+legend.set_title("")
+legend.set_frame_on(False)
+legend.set_bbox_to_anchor((1.02, 0.5))
+legend._loc = 10
+for text in legend.texts:
+    text.set_fontsize(8)
+
+plt.show()
+
+
+#%%
+import seaborn as sns
+import matplotlib.pyplot as plt
+import pandas as pd
+
+# ---- 1. Compute Correct - Incorrect difference -----------------------------
+# Assumes merged_accuracy_similarity has columns "Correct" and "Incorrect"
+df_delta = (
+    merged_accuracy_similarity
+    .assign(Delta=lambda d: d["Correct"] - d["Incorrect"])
+    .groupby(["Noise Level", "Noise Area", "Rel. Level"], as_index=False)["Delta"]
+    .mean()
+)
+
+# Optional: order / shorten labels for readability
+rel_order = ["original", "same target", "high", "medium", "low"]
+area_order = ["–", "target", "context", "all"]
+
+df_delta["Rel. Level"] = pd.Categorical(df_delta["Rel. Level"],
+                                        categories=rel_order, ordered=True)
+df_delta["Noise Area"] = pd.Categorical(df_delta["Noise Area"],
+                                        categories=area_order, ordered=True)
+
+# Short labels for plotting
+rel_short = {
+    "original": "orig",
+    "same target": "sameT",
+    "high": "high",
+    "medium": "med",
+    "low": "low",
+}
+area_short = {"–": "none", "target": "tgt", "context": "ctx", "all": "all"}
+
+df_delta["Rel_short"] = df_delta["Rel. Level"].map(rel_short)
+df_delta["Area_short"] = df_delta["Noise Area"].map(area_short)
+
+noise_levels = sorted(df_delta["Noise Level"].unique())
+
+# ---- 2. NeurIPS-style plotting setup --------------------------------------
+sns.set_theme(
+    style="white",
+    context="paper",
+    rc={
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+        "axes.linewidth": 0.8,
+        "xtick.direction": "out",
+        "ytick.direction": "out",
+    },
+)
+
+n_cols = len(noise_levels)
+fig, axes = plt.subplots(
+    1, n_cols,
+    figsize=(3.2 * n_cols, 3.2),
+    sharey=True
+)
+
+# ---- 3. Draw one heatmap per noise level ----------------------------------
+vmax = df_delta["Delta"].abs().max()
+
+for i, nl in enumerate(noise_levels):
+    ax = axes[i] if n_cols > 1 else axes
+
+    sub = df_delta[df_delta["Noise Level"] == nl]
+    mat = sub.pivot(index="Rel_short", columns="Area_short", values="Delta")
+
+    sns.heatmap(
+        mat,
+        ax=ax,
+        vmin=-vmax,
+        vmax=vmax,
+        center=0,
+        cmap="coolwarm",
+        cbar=(i == n_cols - 1),      # single colorbar on the right
+        cbar_kws={"shrink": 0.8, "label": "Δ similarity (Correct − Incorrect)"}
+    )
+
+    ax.set_title(f"Noise level = {nl}", fontsize=9)
+    ax.set_xlabel("Noise area", fontsize=8)
+    if i == 0:
+        ax.set_ylabel("Rel. level", fontsize=8)
+    else:
+        ax.set_ylabel("")
+
+    ax.tick_params(axis="both", labelsize=8)
+
+fig.suptitle(
+    "Effect of Noise on Scene–Output Semantic Separation\n"
+    "(Correct − Incorrect similarity)",
+    fontsize=11,
+    y=1.02
+)
+
+plt.tight_layout()
 plt.show()
 
 

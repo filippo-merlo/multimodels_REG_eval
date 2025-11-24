@@ -348,6 +348,7 @@ import statsmodels.formula.api as smf
 # --- Regression dataframe ---
 reg_df = pd.DataFrame({'y': y, 'x': x})
 
+
 # --- Linear model: y ~ x ---
 lin_mod = smf.ols('y ~ x', data=reg_df).fit()
 
