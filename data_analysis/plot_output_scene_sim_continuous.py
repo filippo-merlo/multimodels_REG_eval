@@ -39,7 +39,6 @@ min_rel_score = df_scene_output['rel_score'].min()
 max_rel_score = df_scene_output['rel_score'].max()
 df_scene_output['normalized score'] = (df_scene_output['rel_score'] - min_rel_score) / (max_rel_score - min_rel_score)
 
-df_scene_output
 
 # Select from df_visions and rename columns to match df_scene_output
 df_visions_scene_output = df_visions[[
@@ -86,15 +85,6 @@ df_union["soft_accuracy"] = (df_union["target_output_similarity"] >= 0.9).astype
 df_union = df_union.apply(lambda col: col.str.lower() if col.dtype == "object" else col)
 
 df_union.drop(columns=['rel_score', 'object.consistency','Rel. Level'], inplace=True)
-
-
-col_order = ['--', 'target', 'context', 'all']
-
-df_union['Noise Area'] = pd.Categorical(df_union['Noise Area'],
-                                       categories=col_order, ordered=True)
-
-df_union
-
 #%%
 import pandas as pd
 import numpy as np
@@ -105,54 +95,27 @@ import matplotlib.pyplot as plt
 n_bins = 10
 df_union["norm_bin"] = pd.cut(df_union["normalized score"], bins=n_bins)
 
-# --- Compute means ---
-binned = (
-    df_union
-    .groupby(["dataset", "Noise Area", "Noise Level", "soft_accuracy", "norm_bin"])
-    .agg({
-        "normalized score": "mean",
-        "scene_output_similarity": "mean"
-    })
-    .reset_index()
-)
+#--- Compute means ---
 
+group_cols = ["dataset", "Noise Area", "Noise Level", "soft_accuracy", "norm_bin"]
+agg_cols = ["normalized score", "scene_output_similarity"]
+
+binned = df_union.groupby(group_cols, observed=True, sort=False)[agg_cols].mean().reset_index()
 binned["Noise Level"] = binned["Noise Level"].astype(str)
 
-# ------------------------------------------------------------------
-# 1) Extract the baseline curve from Noise Area == "--"
-# ------------------------------------------------------------------
-
-baseline_ref = binned[
-    (binned["Noise Area"] == "--") &
-    (binned["Noise Level"] == "0.0")
-].copy()
-
-def interpolate_baseline(df):
-    # sort
-    df = df.sort_values("normalized score").copy()
-    
-    # interpolate only numeric columns
-    num_cols = ["normalized score", "scene_output_similarity"]
-    df[num_cols] = df[num_cols].infer_objects(copy=False).interpolate(limit_direction="both")
-    
-    return df
-
-baseline_ref = (
-    baseline_ref
-    .groupby(["dataset", "soft_accuracy"], group_keys=False)
-    .apply(interpolate_baseline)
-)
-# ------------------------------------------------------------------
-# 2) Remove Noise Area == "--" from the actual plot
-# ------------------------------------------------------------------
-
-binned_no_missing = binned[binned["Noise Area"] != "--"].copy()
+binned[binned['Noise Level']== "0.0"]['Noise Area'].unique()
 
 # ------------------------------------------------------------------
-# 3) Prepare band (0.5 / 1.0 noise)
+# 1) Baseline: Noise Level == 0.0
+# 
 # ------------------------------------------------------------------
+baseline_ref = binned[binned["Noise Level"] == "0.0"].copy()
 
-high_noise = binned_no_missing[binned_no_missing["Noise Level"].isin(["0.5", "1.0"])]
+
+# ------------------------------------------------------------------
+# 2) High-noise band (0.5 / 1.0 noise)
+# ------------------------------------------------------------------
+high_noise = binned[binned["Noise Level"] != "0.0"].copy()
 
 band = (
     high_noise
@@ -170,13 +133,18 @@ band.columns = [
 ]
 
 # ------------------------------------------------------------------
-# 4) Plot with baseline injected into every facet
+# 3) Data to be actually facetted: Noise Level != 0.0
+#    
 # ------------------------------------------------------------------
+grid_data = binned[binned["Noise Level"] != "0.0"].copy()
 
+# ------------------------------------------------------------------
+# 4) Plot
+# ------------------------------------------------------------------
 sns.set(style="whitegrid")
 
 g = sns.FacetGrid(
-    binned_no_missing[binned_no_missing["Noise Level"] == "0.0"],
+    grid_data,
     row="Noise Area",
     col="dataset",
     hue="soft_accuracy",
@@ -206,7 +174,7 @@ def add_band(data, color, **kwargs):
 
 
 def add_baseline(data, color, **kwargs):
-    """Plot the reference baseline from Noise Area == '--' in all facets."""
+    """Plot the reference baseline from Noise Level == 0.0 in all facets."""
     d = baseline_ref[
         (baseline_ref["dataset"] == data["dataset"].iloc[0]) &
         (baseline_ref["soft_accuracy"] == data["soft_accuracy"].iloc[0])
@@ -225,23 +193,16 @@ def add_baseline(data, color, **kwargs):
 # Draw high-noise band first
 g.map_dataframe(add_band)
 
-# Draw local baseline (0.0) for each Noise Area
-g.map_dataframe(
-    sns.lineplot,
-    x="normalized score",
-    y="scene_output_similarity"
-)
-
 # Add global reference baseline
 g.map_dataframe(add_baseline)
 
-g.set_axis_labels("Normalized score (binned)", "Mean scene–output similarity")
+g.set_axis_labels(f"Normalized score (binned: {n_bins})", "Mean scene–output similarity")
 g.add_legend(title="", labels=["Correct", "Incorrect"])
 
 legend = g._legend
 legend.set_title("")
 legend.set_frame_on(False)
-legend.set_bbox_to_anchor((1.02, 0.5))
+legend.set_bbox_to_anchor((1.05, 0.5))
 legend._loc = 10
 
 plt.tight_layout()
