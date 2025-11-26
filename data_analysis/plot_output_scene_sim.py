@@ -228,7 +228,7 @@ dv_incorrect, dv_correct = dep_vars
 # ---------------------------------------------------------
 # define conditions of interest
 # ---------------------------------------------------------
-rel_levels_of_interest = ["high", "low", "congruent", "incongruent"]
+rel_levels_of_interest = ["original","same target","high","medium", "low", "congruent", "incongruent"]
 noise_areas_of_interest = ["target", "context", "all"]
 noise_levels_of_interest = [0.5, 1.0]
 
@@ -256,7 +256,7 @@ plot_df = df[
 ].copy()
 
 # Ensure RelLevel order
-rel_order = ["high", "low", "congruent", "incongruent"]
+rel_order = rel_levels_of_interest
 plot_df["Rel. Level"] = pd.Categorical(
     plot_df["Rel. Level"],
     categories=rel_order,
@@ -267,7 +267,7 @@ plot_df["Rel. Level"] = pd.Categorical(
 # Plot: ONE figure (SOS) with three subplots, Correct & Incorrect side by side
 # ---------------------------------------------------------
 fig, axes = plt.subplots(1, 3, figsize=(15, 4), sharey=True)
-fig.suptitle("SOS (Correct vs Incorrect)")
+fig.suptitle("")
 
 x_positions = np.arange(len(rel_order))
 
@@ -292,12 +292,12 @@ offsets = {
 
 # four distinct colors for the four bar types
 colors_cols = {
-    ("Correct",   0.5): "#6baed6",  # lighter blue
-    ("Correct",   1.0): "#08519c",  # darker blue
-    ("Incorrect", 0.5): "#fb6a4a",  # lighter red
-    ("Incorrect", 1.0): "#a50f15",  # darker red
-}
+    ("Correct",   0.5): "#8BB9E3",  # light blue
+    ("Correct",   1.0): "#2F6FA1",  # dark blue
 
+    ("Incorrect", 0.5): "#E9A3A3",  # light red
+    ("Incorrect", 1.0): "#C23B38",  # dark red
+}
 # to avoid repeated legend entries for baselines
 baseline_label_used = {
     "Incorrect": False,
@@ -365,8 +365,8 @@ for ax, area in zip(axes, noise_areas_of_interest):
     ax.set_xticklabels(rel_order, rotation=30)
     # --- extra labels for dataset groups ---
     # positions between high/low and congruent/incongruent
-    coco_x = 0.5 * (x_positions[0] + x_positions[1])
-    visions_x = 0.5 * (x_positions[2] + x_positions[3])
+    coco_x = 0.5 * (x_positions[0] + x_positions[-3])
+    visions_x = 0.5 * (x_positions[-2] + x_positions[-1])
 
     # y < 0 puts text below the tick labels (axis coordinates)
     ax.text(
