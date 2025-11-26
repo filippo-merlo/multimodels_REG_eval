@@ -363,6 +363,31 @@ for ax, area in zip(axes, noise_areas_of_interest):
     ax.set_title(f"Noise area: {area}")
     ax.set_xticks(x_positions)
     ax.set_xticklabels(rel_order, rotation=30)
+    # --- extra labels for dataset groups ---
+    # positions between high/low and congruent/incongruent
+    coco_x = 0.5 * (x_positions[0] + x_positions[1])
+    visions_x = 0.5 * (x_positions[2] + x_positions[3])
+
+    # y < 0 puts text below the tick labels (axis coordinates)
+    ax.text(
+        coco_x,
+        -0.30,
+        "COOCO",
+        transform=ax.get_xaxis_transform(),
+        ha="center",
+        va="top",
+        fontsize=9,
+    )
+    ax.text(
+        visions_x,
+        -0.30,
+        "VISIONS",
+        transform=ax.get_xaxis_transform(),
+        ha="center",
+        va="top",
+        fontsize=9,
+    )
+
     if area == "target":
         ax.set_ylabel("Semantic Similarity")
     else:
@@ -381,5 +406,7 @@ for h, l in zip(handles, labels):
         seen.add(l)
 
 fig.legend(uniq_handles, uniq_labels, loc="upper right").set_bbox_to_anchor((1.05, 0.7))
-plt.tight_layout(rect=[0, 0, 0.9, 0.95])
+plt.tight_layout(rect=[0, -0.2, 0.9, 0.95])
 plt.show()
+
+# %%
