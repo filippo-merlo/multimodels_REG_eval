@@ -107,10 +107,8 @@ binned[binned['Noise Level']== "0.0"]['Noise Area'].unique()
 
 # ------------------------------------------------------------------
 # 1) Baseline: Noise Level == 0.0
-# 
 # ------------------------------------------------------------------
 baseline_ref = binned[binned["Noise Level"] == "0.0"].copy()
-
 
 # ------------------------------------------------------------------
 # 2) High-noise band (0.5 / 1.0 noise)
@@ -133,13 +131,18 @@ band.columns = [
 ]
 
 # ------------------------------------------------------------------
-# 3) Data to be actually facetted: Noise Level != 0.0
-#    
+# 3) Per–noise-level curves for 0.5 and 1.0
+# ------------------------------------------------------------------
+noise_levels = ["0.5", "1.0"]
+noise_refs = binned[binned["Noise Level"].isin(noise_levels)].copy()
+
+# ------------------------------------------------------------------
+# 4) Data to be actually facetted: Noise Level != 0.0
 # ------------------------------------------------------------------
 grid_data = binned[binned["Noise Level"] != "0.0"].copy()
 
 # ------------------------------------------------------------------
-# 4) Plot
+# 5) Plot
 # ------------------------------------------------------------------
 sns.set(style="whitegrid")
 
@@ -153,7 +156,6 @@ g = sns.FacetGrid(
     height=3.2,
     aspect=1.2
 )
-
 
 def add_band(data, color, **kwargs):
     m = (
@@ -172,7 +174,6 @@ def add_band(data, color, **kwargs):
         color=color
     )
 
-
 def add_baseline(data, color, **kwargs):
     """Plot the reference baseline from Noise Level == 0.0 in all facets."""
     d = baseline_ref[
@@ -189,6 +190,31 @@ def add_baseline(data, color, **kwargs):
         alpha=0.8
     )
 
+def add_noise_lines(data, color, **kwargs):
+    """
+    Add mean curves for Noise Level 0.5 and 1.0
+    (same color as hue, different linestyles).
+    """
+    sub = noise_refs[
+        (noise_refs["dataset"] == data["dataset"].iloc[0]) &
+        (noise_refs["Noise Area"] == data["Noise Area"].iloc[0]) &
+        (noise_refs["soft_accuracy"] == data["soft_accuracy"].iloc[0])
+    ]
+
+    styles = {"0.5": ":", "1.0": ""}
+
+    for nl in noise_levels:
+        d = sub[sub["Noise Level"] == nl].sort_values("normalized score")
+        if len(d) == 0:
+            continue
+        plt.plot(
+            d["normalized score"],
+            d["scene_output_similarity"],
+            linestyle=styles[nl],
+            linewidth=1.2,
+            alpha=0.9,
+            color=color
+        )
 
 # Draw high-noise band first
 g.map_dataframe(add_band)
@@ -196,14 +222,51 @@ g.map_dataframe(add_band)
 # Add global reference baseline
 g.map_dataframe(add_baseline)
 
-g.set_axis_labels(f"Normalized score (binned: {n_bins})", "Mean scene–output similarity")
-g.add_legend(title="", labels=["Correct", "Incorrect"])
+# Add 0.5 and 1.0 noise lines
+g.map_dataframe(add_noise_lines)
 
-legend = g._legend
-legend.set_title("")
-legend.set_frame_on(False)
-legend.set_bbox_to_anchor((1.05, 0.5))
-legend._loc = 10
+# 1) Global y-label only, no global x-label
+g.set_axis_labels("", "Mean scene–output similarity")
+
+# 2) Per-column custom x-labels for the bottom row
+#    g.col_names correspond to the unique values of `dataset` → "cooco", "visions"
+for ax, col in zip(g.axes[-1], g.col_names):  # bottom row
+    if col == "cooco":
+        ax.set_xlabel(f"Norm. Relatedness score")
+    elif col == "visions":
+        ax.set_xlabel(f"Norm. Object Consistency (N. Bins: {n_bins})")
+
+# --- MANUAL LEGEND ---
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
+# remove seaborn's auto-legend
+if g._legend is not None:
+    g._legend.remove()
+
+# base palette for 'soft_accuracy' (same as FacetGrid's default)
+palette = sns.color_palette()
+correct_color   = palette[0]
+incorrect_color = palette[1]
+
+handles = [
+    Line2D([0], [0], color=correct_color,   linestyle='-',  linewidth=1.5),
+    Line2D([0], [0], color=incorrect_color, linestyle='-',  linewidth=1.5),
+    Line2D([0], [0], color='black',         linestyle='-',  linewidth=1.5),
+    Line2D([0], [0], color='black',         linestyle=':',  linewidth=1.5),
+    Patch(facecolor="grey", alpha=0.2, edgecolor="none")   # <<< NEW
+]
+labels = ["Correct", "Incorrect", "Baseline 0.0", "Noise 0.5","0.5–1.0 area"        ]
+
+g.fig.legend(
+    handles,
+    labels,
+    title="",
+    frameon=False,
+    bbox_to_anchor=(1.05, 0.5),
+    loc="center left"
+)
 
 plt.tight_layout()
 plt.show()
+
+# %%
