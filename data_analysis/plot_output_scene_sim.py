@@ -228,7 +228,9 @@ dv_incorrect, dv_correct = dep_vars
 # ---------------------------------------------------------
 # define conditions of interest
 # ---------------------------------------------------------
-rel_levels_of_interest = ["original","same target","high","medium", "low", "congruent", "incongruent"]
+#rel_levels_of_interest = ["original","same target","high","medium", "low", "congruent", "incongruent"]
+rel_levels_of_interest = ["high","low", "congruent", "incongruent"]
+
 noise_areas_of_interest = ["target", "context", "all"]
 noise_levels_of_interest = [0.5, 1.0]
 
@@ -332,20 +334,6 @@ for ax, area in zip(axes, noise_areas_of_interest):
     # -------- baselines: separate for Incorrect and Correct --------
     for idx, r in enumerate(rel_order):
         if r in baseline.index:
-            # incorrect baseline (solid red)
-            y_inc = baseline.loc[r, dv_incorrect]
-            ax.hlines(
-                y_inc,
-                idx,
-                idx + group_width / 2,
-                color="black",
-                linestyle="--",
-                linewidth=1,
-                label="Baseline 0.0 (Incorrect)"
-                if not baseline_label_used["Incorrect"] else None,
-            )
-            baseline_label_used["Incorrect"] = True
-
             # correct baseline (dashed red)
             y_cor = baseline.loc[r, dv_correct]
             ax.hlines(
@@ -355,10 +343,26 @@ for ax, area in zip(axes, noise_areas_of_interest):
                 color="black",
                 linestyle="-",
                 linewidth=1,
-                label="Baseline 0.0 (Correct)"
+                label="Correct, Baseline 0.0"
                 if not baseline_label_used["Correct"] else None,
             )
             baseline_label_used["Correct"] = True
+
+            # incorrect baseline (solid red)
+            y_inc = baseline.loc[r, dv_incorrect]
+            ax.hlines(
+                y_inc,
+                idx,
+                idx + group_width / 2,
+                color="black",
+                linestyle="--",
+                linewidth=1,
+                label="Incorrect, Baseline 0.0"
+                if not baseline_label_used["Incorrect"] else None,
+            )
+            baseline_label_used["Incorrect"] = True
+
+            
 
     ax.set_title(f"Noise area: {area}")
     ax.set_xticks(x_positions)
