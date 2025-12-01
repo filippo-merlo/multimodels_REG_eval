@@ -316,8 +316,8 @@ sns.scatterplot(
     x=x, y=y,
     alpha=0.45, s=60,
     edgecolor='white', linewidth=0.6,
-    color='royalblue',
-    label='Observed samples'
+    color='black',
+    label='Samples'
 )
 
 # --- Linear fit ---
