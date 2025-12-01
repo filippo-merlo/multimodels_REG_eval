@@ -16,6 +16,48 @@ df_visions = pd.read_csv(file_path_visions)
 
 df = df[df['model_name'] == 'llava-hf/llava-onevision-qwen2-0.5b-si-hf']
 
+"""
+from pprint import pprint
+pprint(df['image_name'].to_list()[:10000])
+
+#%%
+images = ['000000064659_cubicle_office_laptop_ham_relscore_low.jpg','000000064659_cubicle_office_laptop_ukulele_relscore_low.jpg','000000064659_cubicle_office_laptop_volleyball_relscore_low.jpg', '000000064659_cubicle_office_laptop_box_relscore_middle.jpg','000000064659_cubicle_office_laptop_keyboard_relscore_middle.jpg']
+df[df['image_name'] == images[-2]]
+#%%
+df[(df['text_similarity_scores'] > 0.9) & 
+   (df['text_similarity_scores'] < 0.91)]
+
+#%%
+pd.set_option('display.max_rows', None)
+car = df[df['target'] == 'car']
+car[(car['text_similarity_scores'] > 0.90) & (car['text_similarity_scores'] < 0.99)]
+
+#%%
+target: car
+
+output: car
+similarity: 1
+
+bus
+0.868518
+
+truck
+0.890202
+
+
+police car
+0.891067	
+
+Suv
+0.900473
+
+A race car
+0.900828
+
+car door 
+0.907864
+"""
+#%%
 # Select and standardize from df
 df_scene_output = df[[
     "image_name",
