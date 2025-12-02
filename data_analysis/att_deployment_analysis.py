@@ -136,7 +136,8 @@ df['soft_accuracy'] = (df['long_caption_text_similarity_scores'] >= 0.90).astype
 #%%
 
 # --- Subset: retain only no-noise condition ---
-df_no_noise = df[df['Noise Level'] == 0.0].copy()
+#df_no_noise = df[df['Noise Level'] == 0.0].copy()
+df_no_noise = df[(df['Noise Level'] == 1.) & (df['Noise Area']=='all')].copy()
 
 # --- Keep only correctly predicted samples ---
 df_no_noise = df_no_noise[df_no_noise['soft_accuracy'] == 1].copy()
@@ -336,7 +337,7 @@ plt.plot(
 
 # --- Axes and figure styling ---
 plt.title(
-    "Attention Ratio vs Normalized Relevance Score\n(Linear vs Quadratic Models)",
+    "Attention Ratio vs Normalized Relatedness Score\n(Linear vs Quadratic Models)",
     fontsize=16, pad=15
 )
 plt.xlabel("Normalized Relatedness Score", fontsize=14)

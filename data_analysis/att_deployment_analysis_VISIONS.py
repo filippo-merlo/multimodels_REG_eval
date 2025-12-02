@@ -112,7 +112,9 @@ print("="*60 + "\n")
 ##################################################
 
 # --- Subset: no-noise condition only ---
-df_no_noise = df[df['Noise Level'] == 0.0].copy()
+#df_no_noise = df[df['Noise Level'] == 0.0].copy()
+df_no_noise = df[(df['Noise Level'] == 1.) & (df['Noise Area']=='All')].copy()
+
 
 # --- Filter and keep only correct samples ---
 df_no_noise = df_no_noise[df_no_noise['soft_accuracy'] == 1].copy()
