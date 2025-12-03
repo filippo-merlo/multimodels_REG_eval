@@ -381,6 +381,26 @@ x_vertex = -b / (2 * a)
 print(f"\nQuadratic vertex (minimum) at x = {x_vertex:.3f} (normalized scale)")
 
 
+# --- Goodness-of-fit metrics for both models ---
+
+def model_metrics(mod, name):
+    return {
+        "model": name,
+        "adj_R2":   mod.rsquared_adj,
+        "RMSE":     np.sqrt(mod.mse_resid),  # √(residual mean square)
+        "AIC":      mod.aic,
+        "BIC":      mod.bic,                # optional, but often reported
+        "df_model": int(mod.df_model + 1),  # number of parameters incl. intercept
+    }
+
+metrics_lin  = model_metrics(lin_mod,  "Linear (y ~ x)")
+metrics_quad = model_metrics(quad_mod, "Quadratic (y ~ x + x²)")
+
+metrics_df = pd.DataFrame([metrics_lin, metrics_quad])
+print("\n=== Model comparison (goodness-of-fit) ===")
+metrics_df
+
+
 #%%
 ##################################################
 # === COMPUTE ACCURACY METRICS (SOFT & HARD) ===
