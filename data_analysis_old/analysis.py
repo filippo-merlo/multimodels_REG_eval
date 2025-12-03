@@ -72,15 +72,6 @@ plt.tight_layout()
 plt.show()
 
 #%%
-# --- Filter dataset based on selected image ---
-#filtered_images_folder_path = '/Users/filippomerlo/Desktop/manually_filtered_images'
-## Get all image filenames in the folder (only valid image formats)
-#image_filenames = {f for f in os.listdir(filtered_images_folder_path) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tiff'))}
-## Extract unique image IDs from filenames
-#image_filenames_id = {f.split('_')[0] for f in image_filenames}
-## filter by image filenames
-#df_filtered = df[df['image_name'].apply(lambda x: x.split('_')[0] in image_filenames_id)] if 'image_name' in df.columns else df
-#%%
 # compute metrics
 # Soft Accuracy
 soft_accuracy_by_combined = df.groupby(['Rel. Level', 'Noise Level', 'Noise Area'])[
@@ -92,13 +83,12 @@ soft_accuracy_by_combined = df.groupby(['Rel. Level', 'Noise Level', 'Noise Area
 max_length = max(df['target_clean'].apply(len))
 print(max_length)
 
-# Filter out rows where 'output_clean' is longer than max_length
+
+#%% Filter out rows where 'output_clean' is longer than max_length
 df_hard_accuracy = df[df['output_clean'].apply(len) <= max_length] #!!!
 hard_accuracy_by_combined = df_hard_accuracy.groupby(['Rel. Level', 'Noise Level', 'Noise Area'])[
     ['hard_accuracy']
 ].mean().reset_index()
-
-#%%
 
 df_to_print = df_hard_accuracy.groupby(['model_name', 'Rel. Level', 'Noise Level', 'Noise Area'])[['long_caption_scores', 'long_caption_text_similarity_scores', 'hard_accuracy', 'soft_accuracy']].mean().reset_index()
 df_to_print.columns = ['model_name', 'Rel. Level', 'Noise Level', 'Noise Area',
@@ -113,9 +103,6 @@ for model, group in df_to_print.groupby('model_name'):
     print(group.drop(columns='model_name').to_latex(index=False, float_format="%.3f"))
     print("\caption{Results for model: " + model + "}")
     print("\end{table}")
-
-#%%
-df.columns
 
 #%%
 # Hard Accuracy
@@ -468,6 +455,7 @@ semantic_by_combined = df.groupby(['Rel. Level', 'Noise Level', 'Noise Area'])[
     ['long_caption_scores', 'long_caption_text_similarity_scores']
 ].mean().reset_index()
 semantic_by_combined
+
 
 #%% Semantic Similarity Analysis
 # List of scores to visualize
