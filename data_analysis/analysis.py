@@ -1,4 +1,4 @@
-# %%
+#%%
 """
 Analysis of VLM performance on the COOCO dataset.
 
@@ -21,7 +21,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# %%
+#%%
 # ------------------------ I/O & GLOBAL STYLE ---------------------------------
 
 # Path to the full evaluation CSV
@@ -47,7 +47,7 @@ plt.rcParams.update(
 print("Models in the CSV:")
 pprint(sorted(df["model_name"].unique()))
 
-# %%
+#%%
 # ------------------------ QUICK TEXTUAL INSPECTION ---------------------------
 
 # Print a small sample of rows to eyeball outputs
@@ -61,7 +61,7 @@ for i, (_, row) in enumerate(df.iterrows()):
     print("Output:   ", row["output_clean"])
     print("Sim(T/O): ", row["original_target_output_similarity"])
 
-# %%
+#%%
 # ------------------------ FILTER TO SELECTED MODELS --------------------------
 
 desired_models = [
@@ -76,7 +76,7 @@ desired_models = [
 df = df[df["model_name"].isin(desired_models)].copy()
 print(f"Filtered dataset size: {len(df)} rows")
 
-# %%
+#%%
 # ------------------------ PRELIMINARY STATISTICS -----------------------------
 
 # Average relatedness score per relatedness level
@@ -108,7 +108,7 @@ plt.xticks(rotation=45)
 plt.tight_layout()
 plt.show()
 
-# %%
+#%%
 # ------------------------ ACCURACY METRICS (SOFT / HARD) ---------------------
 
 # Soft Accuracy grouped by Rel. Level, Noise Level, Noise Area
@@ -169,7 +169,7 @@ for model, group in df_to_print.groupby("model_name"):
     print(rf"\caption{{Results for model: {model}}}")
     print(r"\end{table}")
 
-# %%
+#%%
 # ------------------------ SOFT ACCURACY & SIMILARITY -------------------------
 
 # Mark rows where soft accuracy is exactly 1
@@ -233,7 +233,7 @@ merged_accuracy_similarity = merged_accuracy_similarity.round(3).reset_index()
 print("Merged accuracy & similarity (head):")
 print(merged_accuracy_similarity.head())
 
-# %%
+#%%
 # ------------------------ FACETTED BARPLOTS (SCENE SIMILARITY) ---------------
 
 # Long format for seaborn
@@ -286,7 +286,7 @@ if legend:
 
 plt.show()
 
-# %%
+#%%
 # ------------------------ RELATIONAL LINES + BASELINES -----------------------
 
 # Re-use df_melted for a more compact line-based visualization
@@ -429,7 +429,7 @@ for text in legend.texts:
 
 plt.show()
 
-# %%
+#%%
 # ------------------------ HEATMAP OF Δ SIMILARITY ----------------------------
 
 # Δ = Correct − Incorrect similarity
@@ -518,7 +518,7 @@ fig.suptitle(
 plt.tight_layout()
 plt.show()
 
-# %%
+#%%
 # ------------------------ SEMANTIC SIMILARITY (RefCLIPScore) -----------------
 
 semantic_by_combined = (
@@ -532,7 +532,7 @@ semantic_by_combined = (
 print("Semantic similarity (head):")
 print(semantic_by_combined.head())
 
-# %%
+#%%
 # ------------------------ RADAR PLOT: RefCLIPScore ---------------------------
 
 rng = np.random.default_rng(101)  # fixed seed for reproducibility
@@ -628,7 +628,7 @@ ax.legend(
 plt.tight_layout()
 plt.show()
 
-# %%
+#%%
 # ------------------------ RADAR PLOT: SOFT ACCURACY --------------------------
 
 radar_data_soft = (
@@ -715,7 +715,7 @@ ax.legend(
 plt.tight_layout()
 plt.show()
 
-# %%
+#%%
 # ------------------------ ZERO-NOISE MODEL COMPARISON ------------------------
 
 # Restrict to zero-noise rows and copy to avoid chained assignment warnings
@@ -804,3 +804,192 @@ for score in ["long_caption_scores"]:
     ax.tick_params(axis="x", rotation=45)
     plt.tight_layout()
     plt.show()
+
+
+#%%
+# ------------------------ MIXED-EFFECTS MODELS -------------------------------
+# Linear mixed models for:
+#   - RefCLIPScore (long_caption_scores)
+#   - Soft accuracy (soft_accuracy)
+#
+# Fixed effects:
+#   Rel. Level × Noise Level × Noise Area
+# Random effects:
+#   Random intercepts for model_name + image_name (crossed)
+
+import statsmodels.formula.api as smf
+
+#%%
+df.columns
+
+#%%
+# -------------------------------------------------------------------
+# 1) Aggregate across models: one row per image × condition
+# -------------------------------------------------------------------
+agg_cols = [
+    "image_name",
+    "Rel. Level",
+    "Noise Level",
+    "Noise Area",
+]
+
+metrics = ["long_caption_scores", "soft_accuracy"]
+
+df_agg = (
+    df.groupby(agg_cols, as_index=False)[metrics]
+      .mean()
+)
+
+df_agg.loc[df_agg["Noise Level"] == 0.0, "Noise Area"] = "--"
+
+#%%
+
+print("Aggregated rows:", len(df_agg))
+
+# Categorical coding
+rel_order = ["original", "same target", "high", "medium", "low"]
+noise_level_order = [0.0, 0.5, 1.0]
+noise_area_order = ["--","target", "context", "all"]
+
+df_agg["rel_level"] = pd.Categorical(
+    df_agg["Rel. Level"], categories=rel_order, ordered=True
+)
+df_agg["noise_level"] = pd.Categorical(
+    df_agg["Noise Level"], categories=noise_level_order, ordered=True
+)
+df_agg["noise_area"] = pd.Categorical(
+    df_agg["Noise Area"], categories=noise_area_order, ordered=True
+)
+
+# -------------------------------------------------------------------
+# 2a) LMM: RefCLIPScore with random intercept for image
+# -------------------------------------------------------------------
+formula_ref = "long_caption_scores ~ rel_level * noise_level * noise_area"
+
+md_ref = smf.mixedlm(
+    formula_ref,
+    df_agg,
+    groups=df_agg["image_name"],   # only image random intercept
+)
+
+ref_res = md_ref.fit(method="lbfgs", maxiter=500)
+print("\n" + "=" * 80)
+print("LMM on aggregated data: RefCLIPScore")
+print("=" * 80)
+print(ref_res.summary())
+
+#%%
+# ------------------------ LMM: Soft Accuracy ---------------------------------
+
+import statsmodels.formula.api as smf
+
+# Same formula as before
+formula_soft = "soft_accuracy ~ rel_level * noise_level * noise_area"
+
+ols_soft = smf.ols(formula_soft, data=df_agg).fit(
+    cov_type="cluster",
+    cov_kwds={"groups": df_agg["image_name"]},
+)
+
+print("\n" + "=" * 80)
+print("OLS with clustered SEs (by image): Soft Accuracy")
+print("=" * 80)
+print(ols_soft.summary())
+
+
+#%%
+# ------------------------ PLANNED CONTRASTS (EXAMPLE) ------------------------
+# Example: extract estimated marginal means for medium/low relatedness
+# under context noise vs. zero noise (target area, level 0).
+#
+# You can adapt / extend this block depending on which specific contrasts
+# you want to report in the paper.
+
+def make_condition_df(rel_levels, noise_levels, noise_areas, base_df):
+    """
+    Utility to build small design matrices for specific factor combinations
+    using the same coding as in the fitted model.
+    """
+    conds = []
+    for r in rel_levels:
+        for nl in noise_levels:
+            for na in noise_areas:
+                conds.append(
+                    {
+                        "rel_level": r,
+                        "noise_level": nl,
+                        "noise_area": na,
+                    }
+                )
+    df_cond = pd.DataFrame(conds)
+
+    # Ensure same categorical dtypes / levels as training data
+    df_cond["rel_level"] = pd.Categorical(
+        df_cond["rel_level"],
+        categories=base_df["rel_level"].cat.categories,
+        ordered=True,
+    )
+    df_cond["noise_level"] = pd.Categorical(
+        df_cond["noise_level"],
+        categories=base_df["noise_level"].cat.categories,
+        ordered=True,
+    )
+    df_cond["noise_area"] = pd.Categorical(
+        df_cond["noise_area"],
+        categories=base_df["noise_area"].cat.categories,
+        ordered=True,
+    )
+    return df_cond
+
+# Example: medium + low relatedness, comparing:
+#   - baseline: Noise Level = 0, Noise Area = "target" (i.e., no noise)
+#   - context noise: Noise Level = [0.5, 1.0], Noise Area = "context"
+
+rel_levels_interest = ["medium", "low"]
+
+df_baseline = make_condition_df(
+    rel_levels_interest, [0.0], ["target"], df_mm
+)
+df_context_noise = make_condition_df(
+    rel_levels_interest, [0.5, 1.0], ["context"], df_mm
+)
+
+# Predicted RefCLIPScore means for those conditions
+pred_baseline_ref = ref_res.predict(df_baseline)
+pred_context_ref = ref_res.predict(df_context_noise)
+
+print("\n" + "-" * 80)
+print("Planned contrast: RefCLIPScore for medium/low relatedness")
+print("Baseline (no noise: level 0, area=target) vs. context noise (levels 0.5/1.0)")
+print("-" * 80)
+
+df_contrast_ref = pd.concat(
+    [
+        df_baseline.assign(pred_ref=pred_baseline_ref, condition="baseline"),
+        df_context_noise.assign(pred_ref=pred_context_ref, condition="context_noise"),
+    ],
+    ignore_index=True,
+)
+
+print(df_contrast_ref.groupby(["condition", "rel_level"])["pred_ref"].mean())
+
+# Same contrast for soft accuracy
+pred_baseline_soft = soft_res.predict(df_baseline)
+pred_context_soft = soft_res.predict(df_context_noise)
+
+df_contrast_soft = pd.concat(
+    [
+        df_baseline.assign(pred_soft=pred_baseline_soft, condition="baseline"),
+        df_context_noise.assign(pred_soft=pred_context_soft, condition="context_noise"),
+    ],
+    ignore_index=True,
+)
+
+print("\n" + "-" * 80)
+print("Planned contrast: Soft accuracy for medium/low relatedness")
+print("Baseline (no noise: level 0, area=target) vs. context noise (levels 0.5/1.0)")
+print("-" * 80)
+
+print(df_contrast_soft.groupby(["condition", "rel_level"])["pred_soft"].mean())
+
+# %%
