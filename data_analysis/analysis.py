@@ -825,9 +825,9 @@ df_agg.loc[df_agg["Noise Level"] == 0.0, "Noise Area"] = "none"
 df_agg["image_name"] = df_agg["image_name"].str.split("_").str[0]
 
 # Keep only semantic levels of interest
-rel_order = ["high", "low"]
+rel_order = ["original", "low"]
 #noise_level_order = [0.0, 0.5, 1.0]
-noise_level_order = [0.0, 0.5]
+noise_level_order = [0.0, 1.0]
 
 #noise_area_order  = ["none", "target", "context", "all"]
 noise_area_order  = ["none", "context"]
@@ -835,6 +835,7 @@ noise_area_order  = ["none", "context"]
 df_agg = df_agg[df_agg["Rel. Level"].isin(rel_order)].copy()
 df_agg = df_agg[df_agg["Noise Level"].isin(noise_level_order)].copy()
 df_agg = df_agg[df_agg["Noise Area"].isin(noise_area_order)].copy()
+
 
 # ------------------------------------------------------------------
 # 1) Tidy names
