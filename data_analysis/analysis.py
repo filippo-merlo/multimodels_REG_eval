@@ -808,188 +808,161 @@ for score in ["long_caption_scores"]:
 
 #%%
 # ------------------------ MIXED-EFFECTS MODELS -------------------------------
-# Linear mixed models for:
-#   - RefCLIPScore (long_caption_scores)
-#   - Soft accuracy (soft_accuracy)
-#
-# Fixed effects:
-#   Rel. Level × Noise Level × Noise Area
-# Random effects:
-#   Random intercepts for model_name + image_name (crossed)
-
 import statsmodels.formula.api as smf
 
-#%%
-df.columns
-
-#%%
-# -------------------------------------------------------------------
-# 1) Aggregate across models: one row per image × condition
-# -------------------------------------------------------------------
-agg_cols = [
-    "image_name",
-    "Rel. Level",
-    "Noise Level",
-    "Noise Area",
-]
-
-metrics = ["long_caption_scores", "soft_accuracy"]
+agg_cols = ["image_name", "Rel. Level", "Noise Level", "Noise Area"]
+metrics = ["long_caption_scores"]
 
 df_agg = (
     df.groupby(agg_cols, as_index=False)[metrics]
       .mean()
 )
 
-df_agg.loc[df_agg["Noise Level"] == 0.0, "Noise Area"] = "--"
+# For noise_level = 0, explicitly code the absence of area
+df_agg.loc[df_agg["Noise Level"] == 0.0, "Noise Area"] = "none"
 
+# Remove suffixes from image names (if needed)
+df_agg["image_name"] = df_agg["image_name"].str.split("_").str[0]
+
+# Keep only semantic levels of interest
+rel_order = ["high", "low"]
+#noise_level_order = [0.0, 0.5, 1.0]
+noise_level_order = [0.0, 0.5]
+
+#noise_area_order  = ["none", "target", "context", "all"]
+noise_area_order  = ["none", "context"]
+
+df_agg = df_agg[df_agg["Rel. Level"].isin(rel_order)].copy()
+df_agg = df_agg[df_agg["Noise Level"].isin(noise_level_order)].copy()
+df_agg = df_agg[df_agg["Noise Area"].isin(noise_area_order)].copy()
+
+# ------------------------------------------------------------------
+# 1) Tidy names
+# ------------------------------------------------------------------
+df_agg = df_agg.rename(columns={
+    "Rel. Level": "rel_level",
+    "Noise Level": "noise_level",
+    "Noise Area": "noise_area",
+    "long_caption_scores": "refclip"
+})
+
+# ------------------------------------------------------------------
+# 2) Set categoricals (reference levels = first category)
+# ------------------------------------------------------------------
+df_agg["rel_level"]  = pd.Categorical(df_agg["rel_level"],
+                                      categories=rel_order,
+                                      ordered=True)
+
+df_agg["noise_level"] = pd.Categorical(df_agg["noise_level"],
+                                       categories=noise_level_order,
+                                       ordered=True)
+
+df_agg["noise_area"] = pd.Categorical(df_agg["noise_area"],
+                                      categories=noise_area_order,
+                                      ordered=True)
+
+# ------------------------------
+# MODEL
+# ------------------------------
+
+formula = "refclip ~ rel_level + noise_area"
+
+md = smf.mixedlm(formula,
+                 df_agg,
+                 groups=df_agg["image_name"])
+
+m = md.fit(method="lbfgs")
+print(m.summary())
+
+# %%
 #%%
-
-print("Aggregated rows:", len(df_agg))
-
-# Categorical coding
-rel_order = ["original", "same target", "high", "medium", "low"]
-noise_level_order = [0.0, 0.5, 1.0]
-noise_area_order = ["--","target", "context", "all"]
-
-df_agg["rel_level"] = pd.Categorical(
-    df_agg["Rel. Level"], categories=rel_order, ordered=True
-)
-df_agg["noise_level"] = pd.Categorical(
-    df_agg["Noise Level"], categories=noise_level_order, ordered=True
-)
-df_agg["noise_area"] = pd.Categorical(
-    df_agg["Noise Area"], categories=noise_area_order, ordered=True
-)
-
-# -------------------------------------------------------------------
-# 2a) LMM: RefCLIPScore with random intercept for image
-# -------------------------------------------------------------------
-formula_ref = "long_caption_scores ~ rel_level * noise_level * noise_area"
-
-md_ref = smf.mixedlm(
-    formula_ref,
-    df_agg,
-    groups=df_agg["image_name"],   # only image random intercept
-)
-
-ref_res = md_ref.fit(method="lbfgs", maxiter=500)
-print("\n" + "=" * 80)
-print("LMM on aggregated data: RefCLIPScore")
-print("=" * 80)
-print(ref_res.summary())
-
-#%%
-# ------------------------ LMM: Soft Accuracy ---------------------------------
-
+# ------------------------ MIXED-EFFECTS MODELS -------------------------------
 import statsmodels.formula.api as smf
 
-# Same formula as before
-formula_soft = "soft_accuracy ~ rel_level * noise_level * noise_area"
+agg_cols = ["image_name", "Rel. Level", "Noise Level", "Noise Area"]
+metrics = ["long_caption_scores"]
 
-ols_soft = smf.ols(formula_soft, data=df_agg).fit(
-    cov_type="cluster",
-    cov_kwds={"groups": df_agg["image_name"]},
+df_agg = (
+    df.groupby(agg_cols, as_index=False)[metrics]
+      .mean()
 )
 
-print("\n" + "=" * 80)
-print("OLS with clustered SEs (by image): Soft Accuracy")
-print("=" * 80)
-print(ols_soft.summary())
+# For noise_level = 0, explicitly code the absence of area
+df_agg.loc[df_agg["Noise Level"] == 0.0, "Noise Area"] = "none"
 
+# Remove suffixes from image names (if needed)
+df_agg["image_name"] = df_agg["image_name"].str.split("_").str[0]
 
-#%%
-# ------------------------ PLANNED CONTRASTS (EXAMPLE) ------------------------
-# Example: extract estimated marginal means for medium/low relatedness
-# under context noise vs. zero noise (target area, level 0).
-#
-# You can adapt / extend this block depending on which specific contrasts
-# you want to report in the paper.
+# Keep only semantic levels of interest
+rel_order = ["high", "low"]
+noise_level_order = [0.0, 0.5, 1.0]
+noise_area_order  = ["none", "target", "context", "all"]
 
-def make_condition_df(rel_levels, noise_levels, noise_areas, base_df):
-    """
-    Utility to build small design matrices for specific factor combinations
-    using the same coding as in the fitted model.
-    """
-    conds = []
-    for r in rel_levels:
-        for nl in noise_levels:
-            for na in noise_areas:
-                conds.append(
-                    {
-                        "rel_level": r,
-                        "noise_level": nl,
-                        "noise_area": na,
-                    }
-                )
-    df_cond = pd.DataFrame(conds)
+df_agg = df_agg[df_agg["Rel. Level"].isin(rel_order)].copy()
+df_agg = df_agg[df_agg["Noise Level"].isin(noise_level_order)].copy()
 
-    # Ensure same categorical dtypes / levels as training data
-    df_cond["rel_level"] = pd.Categorical(
-        df_cond["rel_level"],
-        categories=base_df["rel_level"].cat.categories,
-        ordered=True,
-    )
-    df_cond["noise_level"] = pd.Categorical(
-        df_cond["noise_level"],
-        categories=base_df["noise_level"].cat.categories,
-        ordered=True,
-    )
-    df_cond["noise_area"] = pd.Categorical(
-        df_cond["noise_area"],
-        categories=base_df["noise_area"].cat.categories,
-        ordered=True,
-    )
-    return df_cond
+# ------------------------------------------------------------------
+# 1) Tidy names
+# ------------------------------------------------------------------
+df_agg = df_agg.rename(columns={
+    "Rel. Level": "rel_level",
+    "Noise Level": "noise_level",
+    "Noise Area": "noise_area",
+    "long_caption_scores": "refclip"
+})
 
-# Example: medium + low relatedness, comparing:
-#   - baseline: Noise Level = 0, Noise Area = "target" (i.e., no noise)
-#   - context noise: Noise Level = [0.5, 1.0], Noise Area = "context"
+# ------------------------------------------------------------------
+# 2) Set categoricals (reference levels = first category)
+# ------------------------------------------------------------------
+df_agg["rel_level"]  = pd.Categorical(df_agg["rel_level"],
+                                      categories=rel_order,
+                                      ordered=True)
 
-rel_levels_interest = ["medium", "low"]
+df_agg["noise_level"] = pd.Categorical(df_agg["noise_level"],
+                                       categories=noise_level_order,
+                                       ordered=True)
 
-df_baseline = make_condition_df(
-    rel_levels_interest, [0.0], ["target"], df_mm
-)
-df_context_noise = make_condition_df(
-    rel_levels_interest, [0.5, 1.0], ["context"], df_mm
-)
+df_agg["noise_area"] = pd.Categorical(df_agg["noise_area"],
+                                      categories=noise_area_order,
+                                      ordered=True)
 
-# Predicted RefCLIPScore means for those conditions
-pred_baseline_ref = ref_res.predict(df_baseline)
-pred_context_ref = ref_res.predict(df_context_noise)
+# ==================================================================
+# MODEL A: baseline (noise_level = 0 only, no noise_area factor)
+# ==================================================================
+df_base = df_agg[df_agg["noise_level"] == 0.0].copy()
 
-print("\n" + "-" * 80)
-print("Planned contrast: RefCLIPScore for medium/low relatedness")
-print("Baseline (no noise: level 0, area=target) vs. context noise (levels 0.5/1.0)")
-print("-" * 80)
+formula_base = "refclip ~ rel_level"
 
-df_contrast_ref = pd.concat(
-    [
-        df_baseline.assign(pred_ref=pred_baseline_ref, condition="baseline"),
-        df_context_noise.assign(pred_ref=pred_context_ref, condition="context_noise"),
-    ],
-    ignore_index=True,
+md_base = smf.mixedlm(formula_base,
+                      df_base,
+                      groups=df_base["image_name"])  # random intercepts by image
+m_base = md_base.fit(method="lbfgs")
+print("\n=== BASELINE MODEL (noise_level = 0) ===")
+print(m_base.summary())
+
+# ==================================================================
+# MODEL B: noisy conditions only (noise_level ∈ {0.5, 1.0},
+#          fully crossed rel_level × noise_level × noise_area)
+# ==================================================================
+df_noise = df_agg[df_agg["noise_level"].isin([0.5, 1.0])].copy()
+
+# Drop the "none" level (it only exists at noise_level = 0)
+df_noise["noise_area"] = df_noise["noise_area"].cat.remove_categories(["none"])
+df_noise["noise_area"] = df_noise["noise_area"].cat.reorder_categories(
+    ["target", "context", "all"],
+    ordered=True
 )
 
-print(df_contrast_ref.groupby(["condition", "rel_level"])["pred_ref"].mean())
+# (Optional) remove unused 0.0 level from noise_level categories in this subset
+df_noise["noise_level"] = df_noise["noise_level"].cat.remove_categories([0.0])
 
-# Same contrast for soft accuracy
-pred_baseline_soft = soft_res.predict(df_baseline)
-pred_context_soft = soft_res.predict(df_context_noise)
+formula_noise = "refclip ~ rel_level * noise_level * noise_area"
 
-df_contrast_soft = pd.concat(
-    [
-        df_baseline.assign(pred_soft=pred_baseline_soft, condition="baseline"),
-        df_context_noise.assign(pred_soft=pred_context_soft, condition="context_noise"),
-    ],
-    ignore_index=True,
-)
-
-print("\n" + "-" * 80)
-print("Planned contrast: Soft accuracy for medium/low relatedness")
-print("Baseline (no noise: level 0, area=target) vs. context noise (levels 0.5/1.0)")
-print("-" * 80)
-
-print(df_contrast_soft.groupby(["condition", "rel_level"])["pred_soft"].mean())
+md_noise = smf.mixedlm(formula_noise,
+                       df_noise,
+                       groups=df_noise["image_name"])  # random intercepts by image
+m_noise = md_noise.fit(method="lbfgs")
+print("\n=== NOISY MODEL (noise_level ∈ {0.5, 1.0}) ===")
+print(m_noise.summary())
 
 # %%
