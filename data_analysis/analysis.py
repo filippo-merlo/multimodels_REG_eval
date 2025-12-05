@@ -818,19 +818,27 @@ df_agg = (
       .mean()
 )
 
-# For noise_level = 0, explicitly code the absence of area
-df_agg.loc[df_agg["Noise Level"] == 0.0, "Noise Area"] = "none"
-
 # Remove suffixes from image names (if needed)
 df_agg["image_name"] = df_agg["image_name"].str.split("_").str[0]
 
-# Keep only semantic levels of interest
-rel_order = ["original", "low"]
-#noise_level_order = [0.0, 0.5, 1.0]
-noise_level_order = [0.0, 1.0]
+# --- Clone zero–noise rows ---
+df_zero = df_agg[df_agg["Noise Level"] == 0.0].copy()
 
+df_agg_c = df_zero.copy()
+df_agg_a = df_zero.copy()
+
+df_agg_c["Noise Area"] = "context"
+df_agg_a["Noise Area"] = "all"
+
+# --- Add the two cloned datasets to the original ---
+df_agg = pd.concat([df_agg, df_agg_c, df_agg_a], ignore_index=True)
+
+# Keep only semantic levels of interest
+rel_order = ["original","high","low"]
+#noise_level_order = [0.0, 0.5, 1.0]
+noise_level_order = [0.0, 0.5, 1.0]
 #noise_area_order  = ["none", "target", "context", "all"]
-noise_area_order  = ["none", "context"]
+noise_area_order  = ["all","context","target"]
 
 df_agg = df_agg[df_agg["Rel. Level"].isin(rel_order)].copy()
 df_agg = df_agg[df_agg["Noise Level"].isin(noise_level_order)].copy()
@@ -862,108 +870,40 @@ df_agg["noise_area"] = pd.Categorical(df_agg["noise_area"],
                                       categories=noise_area_order,
                                       ordered=True)
 
+
+cells = df_agg.groupby("image_name")[["rel_level", "noise_area"]].nunique()
+
+# count unique pairs per image
+counts = df_agg.groupby("image_name").apply(
+    lambda g: g.drop_duplicates(["rel_level","noise_area"]).shape[0]
+)
+
+# keep only images with all 4 combinations
+valid_images = counts[counts == 9].index
+
+df_balanced = df_agg[df_agg["image_name"].isin(valid_images)].copy()
+
+
 # ------------------------------
 # MODEL
 # ------------------------------
 
-formula = "refclip ~ rel_level + noise_area"
+formula = "refclip ~ rel_level * noise_area * noise_level"
 
 md = smf.mixedlm(formula,
-                 df_agg,
-                 groups=df_agg["image_name"])
+                 df_balanced,
+                 groups=df_balanced["image_name"])
 
 m = md.fit(method="lbfgs")
 print(m.summary())
 
-# %%
+print("Converged:", m.converged)
+print("Random-effects covariance:\n", m.cov_re)
+
 #%%
-# ------------------------ MIXED-EFFECTS MODELS -------------------------------
-import statsmodels.formula.api as smf
+m_ols = smf.ols(
+    "refclip ~ rel_level * noise_area * noise_level",
+    data=df_balanced
+).fit()
 
-agg_cols = ["image_name", "Rel. Level", "Noise Level", "Noise Area"]
-metrics = ["long_caption_scores"]
-
-df_agg = (
-    df.groupby(agg_cols, as_index=False)[metrics]
-      .mean()
-)
-
-# For noise_level = 0, explicitly code the absence of area
-df_agg.loc[df_agg["Noise Level"] == 0.0, "Noise Area"] = "none"
-
-# Remove suffixes from image names (if needed)
-df_agg["image_name"] = df_agg["image_name"].str.split("_").str[0]
-
-# Keep only semantic levels of interest
-rel_order = ["high", "low"]
-noise_level_order = [0.0, 0.5, 1.0]
-noise_area_order  = ["none", "target", "context", "all"]
-
-df_agg = df_agg[df_agg["Rel. Level"].isin(rel_order)].copy()
-df_agg = df_agg[df_agg["Noise Level"].isin(noise_level_order)].copy()
-
-# ------------------------------------------------------------------
-# 1) Tidy names
-# ------------------------------------------------------------------
-df_agg = df_agg.rename(columns={
-    "Rel. Level": "rel_level",
-    "Noise Level": "noise_level",
-    "Noise Area": "noise_area",
-    "long_caption_scores": "refclip"
-})
-
-# ------------------------------------------------------------------
-# 2) Set categoricals (reference levels = first category)
-# ------------------------------------------------------------------
-df_agg["rel_level"]  = pd.Categorical(df_agg["rel_level"],
-                                      categories=rel_order,
-                                      ordered=True)
-
-df_agg["noise_level"] = pd.Categorical(df_agg["noise_level"],
-                                       categories=noise_level_order,
-                                       ordered=True)
-
-df_agg["noise_area"] = pd.Categorical(df_agg["noise_area"],
-                                      categories=noise_area_order,
-                                      ordered=True)
-
-# ==================================================================
-# MODEL A: baseline (noise_level = 0 only, no noise_area factor)
-# ==================================================================
-df_base = df_agg[df_agg["noise_level"] == 0.0].copy()
-
-formula_base = "refclip ~ rel_level"
-
-md_base = smf.mixedlm(formula_base,
-                      df_base,
-                      groups=df_base["image_name"])  # random intercepts by image
-m_base = md_base.fit(method="lbfgs")
-print("\n=== BASELINE MODEL (noise_level = 0) ===")
-print(m_base.summary())
-
-# ==================================================================
-# MODEL B: noisy conditions only (noise_level ∈ {0.5, 1.0},
-#          fully crossed rel_level × noise_level × noise_area)
-# ==================================================================
-df_noise = df_agg[df_agg["noise_level"].isin([0.5, 1.0])].copy()
-
-# Drop the "none" level (it only exists at noise_level = 0)
-df_noise["noise_area"] = df_noise["noise_area"].cat.remove_categories(["none"])
-df_noise["noise_area"] = df_noise["noise_area"].cat.reorder_categories(
-    ["target", "context", "all"],
-    ordered=True
-)
-
-# (Optional) remove unused 0.0 level from noise_level categories in this subset
-df_noise["noise_level"] = df_noise["noise_level"].cat.remove_categories([0.0])
-
-formula_noise = "refclip ~ rel_level * noise_level * noise_area"
-
-md_noise = smf.mixedlm(formula_noise,
-                       df_noise,
-                       groups=df_noise["image_name"])  # random intercepts by image
-m_noise = md_noise.fit(method="lbfgs")
-print("\n=== NOISY MODEL (noise_level ∈ {0.5, 1.0}) ===")
-print(m_noise.summary())
-
-# %%
+print(m_ols.summary())
