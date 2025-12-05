@@ -836,7 +836,7 @@ df_agg = pd.concat([df_agg, df_agg_c, df_agg_a], ignore_index=True)
 # Keep only semantic levels of interest
 rel_order = ["original","high","low"]
 #noise_level_order = [0.0, 0.5, 1.0]
-noise_level_order = [0.0, 0.5, 1.0]
+noise_level_order = [0.0, 0.5, 1.0] # model noise as continuous 
 #noise_area_order  = ["none", "target", "context", "all"]
 noise_area_order  = ["all","context","target"]
 
@@ -892,7 +892,7 @@ formula = "refclip ~ rel_level * noise_area * noise_level"
 
 md = smf.mixedlm(formula,
                  df_balanced,
-                 groups=df_balanced["image_name"])
+                 groups=df_balanced["image_name"]) # try use model as intercept
 
 m = md.fit(method="lbfgs")
 print(m.summary())

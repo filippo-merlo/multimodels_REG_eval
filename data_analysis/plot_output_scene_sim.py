@@ -24,7 +24,8 @@ df_scene_output = df[[
     "Noise Area",
     "scene_output_similarity",
     "Noise Level",
-    "rel_score"
+    "rel_score",
+    "scene"
 ]]
 
 
@@ -53,7 +54,6 @@ df_union["soft_accuracy"] = (df_union["long_caption_text_similarity_scores"] >= 
 
 df_union = df_union.apply(lambda col: col.str.lower() if col.dtype == "object" else col)
 
-df_union
 
 print("Rel. Level:", df_union["Rel. Level"].unique())
 print("Noise Area:", df_union["Noise Area"].unique())
@@ -99,6 +99,18 @@ soft_accuracy_similarity.columns = [
     'TOS - Correct']
 
 merged_accuracy_similarity = soft_accuracy_similarity.reset_index()
+
+#%%
+# Assume df_union has columns: 'image', 'scene'
+mask = df_union['scene'].isna()
+
+df_union.loc[mask, 'scene'] = (
+    df_union.loc[mask, 'image_name']
+    .astype(str)
+    .str.split('_')
+    .str[0]
+)
+df_union.to_csv("cooco_visions_scene_output_sim.csv", index=False)
 
 #%%
 print(merged_accuracy_similarity.to_csv())
