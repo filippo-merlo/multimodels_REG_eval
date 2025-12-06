@@ -808,9 +808,13 @@ for score in ["long_caption_scores"]:
 
 #%%
 # ------------------------ MIXED-EFFECTS MODELS -------------------------------
+import pandas as pd
 import statsmodels.formula.api as smf
 
-agg_cols = ["image_name", "Rel. Level", "Noise Level", "Noise Area"]
+# ------------------------------------------------------------------
+# Aggregate data
+# ------------------------------------------------------------------
+agg_cols = ["image_name", "Rel. Level", "Noise Level", "Noise Area", "model_name"]
 metrics = ["long_caption_scores"]
 
 df_agg = (
@@ -821,7 +825,9 @@ df_agg = (
 # Remove suffixes from image names (if needed)
 df_agg["image_name"] = df_agg["image_name"].str.split("_").str[0]
 
-# --- Clone zero–noise rows ---
+# ------------------------------------------------------------------
+# Clone zero–noise rows so that we have all noise_area conditions
+# ------------------------------------------------------------------
 df_zero = df_agg[df_agg["Noise Level"] == 0.0].copy()
 
 df_agg_c = df_zero.copy()
@@ -830,75 +836,83 @@ df_agg_a = df_zero.copy()
 df_agg_c["Noise Area"] = "context"
 df_agg_a["Noise Area"] = "all"
 
-# --- Add the two cloned datasets to the original ---
 df_agg = pd.concat([df_agg, df_agg_c, df_agg_a], ignore_index=True)
 
-# Keep only semantic levels of interest
-rel_order = ["original","high","low"]
-#noise_level_order = [0.0, 0.5, 1.0]
-noise_level_order = [0.0, 0.5, 1.0] # model noise as continuous 
-#noise_area_order  = ["none", "target", "context", "all"]
-noise_area_order  = ["all","context","target"]
+# ------------------------------------------------------------------
+# Keep only semantic levels and noise conditions of interest
+# ------------------------------------------------------------------
+rel_order         = ["original", "low"]
+noise_level_order = [0.0, 0.5, 1.0]  # noise level will be modeled as continuous
+noise_area_order  = ["all", "context", "target"]
 
 df_agg = df_agg[df_agg["Rel. Level"].isin(rel_order)].copy()
 df_agg = df_agg[df_agg["Noise Level"].isin(noise_level_order)].copy()
 df_agg = df_agg[df_agg["Noise Area"].isin(noise_area_order)].copy()
 
-
 # ------------------------------------------------------------------
 # 1) Tidy names
 # ------------------------------------------------------------------
 df_agg = df_agg.rename(columns={
-    "Rel. Level": "rel_level",
-    "Noise Level": "noise_level",
-    "Noise Area": "noise_area",
-    "long_caption_scores": "refclip"
+    "Rel. Level":           "rel_level",
+    "Noise Level":          "noise_level",
+    "Noise Area":           "noise_area",
+    "long_caption_scores":  "refclip"
 })
 
 # ------------------------------------------------------------------
-# 2) Set categoricals (reference levels = first category)
+# 2) Set types: rel_level & noise_area categorical, noise_level continuous
 # ------------------------------------------------------------------
-df_agg["rel_level"]  = pd.Categorical(df_agg["rel_level"],
-                                      categories=rel_order,
-                                      ordered=True)
-
-df_agg["noise_level"] = pd.Categorical(df_agg["noise_level"],
-                                       categories=noise_level_order,
-                                       ordered=True)
-
-df_agg["noise_area"] = pd.Categorical(df_agg["noise_area"],
-                                      categories=noise_area_order,
-                                      ordered=True)
-
-
-cells = df_agg.groupby("image_name")[["rel_level", "noise_area"]].nunique()
-
-# count unique pairs per image
-counts = df_agg.groupby("image_name").apply(
-    lambda g: g.drop_duplicates(["rel_level","noise_area"]).shape[0]
+df_agg["rel_level"] = pd.Categorical(
+    df_agg["rel_level"],
+    categories=rel_order,
+    ordered=True
 )
 
-# keep only images with all 4 combinations
-valid_images = counts[counts == 9].index
+df_agg["noise_area"] = pd.Categorical(
+    df_agg["noise_area"],
+    categories=noise_area_order,
+    ordered=True
+)
 
+# noise_level as continuous predictor
+# noise level continuous, centred at 0.5 (and scaled if you want)
+df_agg["noise_level"] = df_agg["noise_level"].astype(float)
+
+# centre at 0.5
+df_agg["noise_level"] = df_agg["noise_level"] - 0.5
+df_agg["noise_level"] = df_agg["noise_level"] / df_agg["noise_level"].std()
+
+# ------------------------------------------------------------------
+# 3) Balance images: keep only images with all 3×3 = 9 (rel_level, noise_area) combos
+# ------------------------------------------------------------------
+counts = df_agg.groupby("image_name").apply(
+    lambda g: g.drop_duplicates(["rel_level", "noise_area"]).shape[0]
+)
+
+valid_images = counts[counts == len(rel_order)*len(noise_area_order)].index
 df_balanced = df_agg[df_agg["image_name"].isin(valid_images)].copy()
 
-
-# ------------------------------
-# MODEL
-# ------------------------------
-
+# ------------------------------------------------------------------
+# 4) Mixed-effects model
+#    - Fixed: rel_level * noise_area * noise_level (noise_level continuous)
+#    - Random intercepts:
+#        * image_name  (groups)
+#        * model_name  (variance component)
+# ------------------------------------------------------------------
 formula = "refclip ~ rel_level * noise_area * noise_level"
 
-md = smf.mixedlm(formula,
-                 df_balanced,
-                 groups=df_balanced["image_name"]) # try use model as intercept
+md = smf.mixedlm(
+    formula,
+    df_balanced,
+    groups=df_balanced["image_name"],                 # random intercept for images
+    vc_formula={"model": "0 + C(model_name)"}         # random intercept for models
+)
 
 m = md.fit(method="lbfgs")
-print(m.summary())
 
+print(m.summary())
 print("Converged:", m.converged)
-print("Random-effects covariance:\n", m.cov_re)
+
 
 #%%
 m_ols = smf.ols(
@@ -907,3 +921,13 @@ m_ols = smf.ols(
 ).fit()
 
 print(m_ols.summary())
+
+
+
+"""
+We further analyse these results using a Linear Mixed-Effects (LME) model, with refclip scores as the dependent variable. As fixed predictors, we include semantic relatedness (original vs.\ low), noise area (comparing context– and target–noise conditions to the `all’ baseline), and noise level (modelled as a continuous predictor, centred and scaled), together with all interactions. Random intercepts are included for images and for model identity.\footnote{A fuller random-effects structure with random slopes was considered, but it produced unstable estimates and convergence issues.}
+
+Prior to modelling, we aggregated scores over images, semantic relatedness levels, noise areas, noise levels, and model identities. Zero-noise images were duplicated to ensure that all noise-area conditions were represented at the baseline level. Only images containing the full factorial combination of relatedness and noise-area conditions were retained, yielding a balanced dataset. Noise level was centred at 0.5 and standardised to aid interpretability and improve numerical stability.
+
+The analysis focuses on the two semantic-relatedness extremes of the dataset—the original images and the low-relatedness variants—allowing us to assess how noise interacts with congruence between scene content and the target object. Table~\ref{tab:lme} summarises the LME results. The dominant patterns concern interactions between noise level and noise area: for original images, increasing noise in the context region is associated with a clear rise in refclip scores, while target-region noise has smaller effects. For images in the low-relatedness condition, increasing noise in the context region leads to a marked reduction in similarity between the model’s prediction and the true scene label, whereas increasing noise in the target region further attenuates performance.
+"""
